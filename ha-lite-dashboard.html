@@ -92,6 +92,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
 #upd .btn{background:var(--ink);color:var(--on);font-weight:600}
 #gh{font-size:12px;color:var(--muted);border:1px solid var(--panel2);border-radius:12px;padding:3px 4px 3px 10px;margin-right:8px;text-decoration:none;white-space:nowrap}
 #gh b{font-weight:400;margin-left:4px;padding:0 6px;font-size:15px}
+.modal #gh2{display:inline-block;margin-bottom:12px;font-size:13px;font-weight:600;color:var(--ink);background:var(--on);border-radius:14px;padding:5px 12px;text-decoration:none}
 </style>
 </head>
 <body>
@@ -123,6 +124,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
 <div id="empty" style="display:none"></div>
 
 <div id="cfg" class="modal"><div class="box">
+  <a id="gh2" target="_blank" rel="noopener" style="display:none">Update available on GitHub &rarr;</a>
   <h2>Connect to Home Assistant</h2>
   <label for="url">Address</label>
   <input id="url" type="url" autocapitalize="off" autocorrect="off" placeholder="http://homeassistant.local:8123">
@@ -168,7 +170,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
 (function () {
   'use strict';
   // Bump this whenever the file is edited. Open copies of the page compare it with the server's copy and offer to update.
-  var BUILD = '2026-11-03e';
+  var BUILD = '2026-11-03g';
   var POLL_MS = 5000;
   // ---- Defaults for every device. Edit these, or use the Edit button on the page for per-device changes. ----
   var CONFIG = {
@@ -674,25 +676,36 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
   }
 
   /* ---------- optional GitHub version check (informational only) ---------- */
+  function showGh() {
+    var v = S.ghNew, a = $('gh'), b = $('gh2'), link = CONFIG.repoUrl || CONFIG.updateUrl;
+    if (!v) { a.style.display = 'none'; b.style.display = 'none'; return; }
+    var tip = 'Latest build ' + v + ' (this page is ' + BUILD + ')';
+    a.href = b.href = link; a.title = b.title = tip;
+    a.setAttribute('data-v', v);
+    a.style.display = store('ha_gh_skip') === v ? 'none' : 'inline-block';   // header pill can be dismissed
+    b.style.display = 'inline-block';                                         // the popup pill always shows
+  }
   function checkRepo() {
     if (!CONFIG.updateUrl || S.ghBusy) { return; }
     S.ghBusy = true; S.ghT = new Date().getTime();
-    fetch(CONFIG.updateUrl, { cache: 'no-store' }).then(function (r) {
+    // Plain public GET: no token, cookies or login are sent to GitHub.
+    fetch(CONFIG.updateUrl, { cache: 'no-store', credentials: 'omit' }).then(function (r) {
       if (!r.ok) { throw new Error('http'); }
       return r.text();
     }).then(function (t) {
       S.ghBusy = false;
-      var m = /var BUILD = '([^']+)'/.exec(t), a = $('gh');
-      if (!m || !(m[1] > BUILD) || store('ha_gh_skip') === m[1]) { a.style.display = 'none'; return; }
-      a.href = CONFIG.repoUrl || CONFIG.updateUrl;
-      a.title = 'Latest build ' + m[1] + ' (this page is ' + BUILD + ')';
-      a.setAttribute('data-v', m[1]);
-      a.style.display = 'inline-block';
+      var m = /var BUILD = '([^']+)'/.exec(t);
+      S.ghNew = (m && m[1] > BUILD) ? m[1] : '';
+      showGh();
     }).catch(function () { S.ghBusy = false; });
   }
 
   /* ---------- settings ---------- */
-  function openCfg() { $('url').value = S.url; $('tok').value = S.token; $('cfg').style.display = 'block'; }
+  function openCfg() {
+    $('url').value = S.url; $('tok').value = S.token; $('cfg').style.display = 'block';
+    showGh();
+    if (new Date().getTime() - (S.ghT || 0) > 60000) { checkRepo(); }
+  }
   function closeCfg() { $('cfg').style.display = 'none'; }
   function saveCfg() {
     S.url = $('url').value.replace(/^\s+|\s+$/g, '').replace(/\/+$/, '');
