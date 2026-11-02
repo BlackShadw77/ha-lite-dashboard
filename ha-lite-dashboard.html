@@ -95,7 +95,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
 </style>
 </head>
 <body>
-<div id="upd"><span>A new version of this page is available.</span><button class="btn" id="updgo">Update now</button></div>
+<div id="upd"><span>A newer copy of this page is ready on your server.</span><button class="btn" id="updgo">Reload</button></div>
 <header>
   <div class="clock"><span id="time">--:--</span><small id="date"></small></div>
   <a id="gh" target="_blank" rel="noopener" style="display:none">Update available<b id="ghx">&times;</b></a>
@@ -168,7 +168,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
 (function () {
   'use strict';
   // Bump this whenever the file is edited. Open copies of the page compare it with the server's copy and offer to update.
-  var BUILD = '2026-11-03d';
+  var BUILD = '2026-11-03e';
   var POLL_MS = 5000;
   // ---- Defaults for every device. Edit these, or use the Edit button on the page for per-device changes. ----
   var CONFIG = {
