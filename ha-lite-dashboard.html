@@ -112,11 +112,11 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
 .modal .box.wide{max-width:680px;margin-top:30px}
 #mg{display:grid;grid-template-columns:repeat(7,1fr);grid-gap:4px;margin-bottom:10px}
 #mg .mh{font-size:12px;color:var(--muted);text-align:center;padding:2px 0}
-.mc{background:var(--panel2);border-radius:8px;min-height:54px;padding:5px 2px;text-align:center;font-size:14px}
-.mc.out{opacity:.35}
-.mc.sel{outline:2px solid var(--text)}
-.mc .n{display:inline-block;min-width:22px;border-radius:11px;line-height:22px}
-.mc.today .n{background:var(--on);color:var(--ink);font-weight:600}
+.mday{background:var(--panel2);border-radius:8px;min-height:54px;padding:5px 2px;text-align:center;font-size:14px}
+.mday.out{opacity:.35}
+.mday.sel{outline:2px solid var(--text)}
+.mday .n{display:inline-block;min-width:22px;border-radius:11px;line-height:22px}
+.mday.today .n{background:var(--on);color:var(--ink);font-weight:600}
 .modal .cs{display:block;font-size:16px;color:var(--text);margin:12px 0}
 .modal .cs input{display:inline-block;width:22px;height:22px;padding:0;margin:0 10px 0 0;border:0;vertical-align:-5px;-webkit-appearance:checkbox}
 .modal .evl{font-size:15px;color:var(--text);margin:6px 0}
@@ -168,6 +168,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
   <input id="tok" type="text" autocapitalize="off" autocorrect="off" placeholder="Paste token">
   <p>Create a token in Home Assistant under your profile &rarr; Security. Leave the address blank if this page is served from Home Assistant itself.</p>
   <p><button class="btn" id="reload" style="margin-left:0">Reload latest version</button> <span id="bld"></span></p>
+  <p id="ghfail" style="display:none"></p>
   <div class="row"><button class="btn" id="cancel">Cancel</button><button class="btn go" id="save">Save</button></div>
 </div></div>
 
@@ -227,7 +228,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
 (function () {
   'use strict';
   // Bump this whenever the file is edited. Open copies of the page compare it with the server's copy and offer to update.
-  var BUILD = '2026-11-03h';
+  var BUILD = '2026-11-03i';
   var POLL_MS = 5000;
   // ---- Defaults for every device. Edit these, or use the Edit button on the page for per-device changes. ----
   var CONFIG = {
@@ -522,7 +523,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
   }
 
   function modeControl(s, sel, mode, label) {
-    var w = el('div', 'mc');
+    var w = el('div', 'mctl');
     w.addEventListener('click', function (e) { e.stopPropagation(); });
     var send = function (v) { var d = { entity_id: s.entity_id }; d[sel.key] = v; call(sel.svc, d); };
     if (label) { w.appendChild(el('div', 'ml', sel.label)); }
@@ -849,7 +850,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     for (i = 0; i < 42; i++) {
       (function (day) {
         var evs = dayEvents(list, day);
-        var cell = el('div', 'mc' + (day.getMonth() !== S.mM ? ' out' : '') + (dkey(day) === todayK ? ' today' : '') + (S.mSel && dkey(day) === dkey(S.mSel) ? ' sel' : ''));
+        var cell = el('div', 'mday' + (day.getMonth() !== S.mM ? ' out' : '') + (dkey(day) === todayK ? ' today' : '') + (S.mSel && dkey(day) === dkey(S.mSel) ? ' sel' : ''));
         cell.appendChild(el('span', 'n', String(day.getDate())));
         cell.appendChild(dotsFor(evs, 3));
         cell.addEventListener('click', function () { S.mSel = day; S.mY = day.getFullYear(); S.mM = day.getMonth(); loadMonth(); });
@@ -921,6 +922,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
   /* ---------- optional GitHub version check (informational only) ---------- */
   function showGh() {
     var v = S.ghNew, a = $('gh'), b = $('gh2'), link = CONFIG.repoUrl || CONFIG.updateUrl;
+    var f = $('ghfail'); f.textContent = S.ghErr || ''; f.style.display = S.ghErr ? 'block' : 'none';
     if (!v) { a.style.display = 'none'; b.style.display = 'none'; return; }
     var tip = 'Latest build ' + v + ' (this page is ' + BUILD + ')';
     a.href = b.href = link; a.title = b.title = tip;
@@ -933,14 +935,18 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     S.ghBusy = true; S.ghT = new Date().getTime();
     // Plain public GET: no token, cookies or login are sent to GitHub.
     fetch(CONFIG.updateUrl, { cache: 'no-store', credentials: 'omit' }).then(function (r) {
-      if (!r.ok) { throw new Error('http'); }
+      if (!r.ok) { var e = new Error('http'); e.status = r.status; throw e; }
       return r.text();
     }).then(function (t) {
-      S.ghBusy = false;
+      S.ghBusy = false; S.ghErr = '';
       var m = /var BUILD = '([^']+)'/.exec(t);
       S.ghNew = (m && m[1] > BUILD) ? m[1] : '';
       showGh();
-    }).catch(function () { S.ghBusy = false; });
+    }).catch(function (e) {
+      S.ghBusy = false;
+      S.ghErr = 'Couldn\u2019t check GitHub for updates: ' + (e && e.status ? 'GitHub answered HTTP ' + e.status + (e.status === 404 ? ' (check updateUrl in CONFIG)' : '') : 'this device couldn\u2019t reach GitHub.');
+      showGh();
+    });
   }
 
   /* ---------- settings ---------- */
