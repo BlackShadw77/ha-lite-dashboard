@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Home">
+<title>Home</title>
+<style>
+/* iOS 12 safe: no flex gap, no aspect-ratio, no inset, no optional chaining */
+:root{--bg:#14181c;--panel:#1e252b;--panel2:#28323a;--text:#e8ecef;--muted:#8a96a0;--on:#f2b134;--ink:#241a05;--bad:#e5604d}
+*{-webkit-box-sizing:border-box;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.3 -apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%}
+body{padding:calc(12px + constant(safe-area-inset-top)) 12px 24px;padding:calc(12px + env(safe-area-inset-top)) 12px 24px}
+header{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-align:center;-webkit-align-items:center;align-items:center;margin-bottom:10px}
+.clock{font-size:44px;font-weight:200;letter-spacing:-1px;-webkit-box-flex:1;-webkit-flex:1;flex:1}
+.clock small{display:block;font-size:14px;font-weight:400;letter-spacing:0;color:var(--muted)}
+.btn{background:var(--panel2);color:var(--text);border:0;border-radius:10px;padding:10px 14px;font-size:15px;margin-left:8px;-webkit-appearance:none}
+#status{font-size:13px;color:var(--muted);margin-right:6px}
+#status.bad{color:var(--bad)}
+#tabs{white-space:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -12px 12px;padding:0 12px}
+.tab{display:inline-block;padding:8px 14px;margin-right:8px;border-radius:20px;background:var(--panel);color:var(--muted);font-size:15px}
+.tab.sel{background:var(--text);color:var(--bg)}
+#grid{font-size:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));grid-gap:10px}
+.tile{background:var(--panel);border-radius:14px;padding:12px;min-height:92px;position:relative;-webkit-user-select:none;user-select:none;-webkit-transition:background .2s;transition:background .2s}
+.tile:active{-webkit-transform:scale(.97);transform:scale(.97)}
+.tile .ic{font-size:1.5em;line-height:1}
+.tile .nm{margin-top:8px;font-size:.95em;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile .st{font-size:.82em;color:var(--muted);margin-top:2px}
+.tile.on{background:var(--on);color:var(--ink)}
+.tile.on .st{color:rgba(36,26,5,.7)}
+.tile.off .nm,.tile.off .ic{opacity:.45}
+.tile.ro:active{-webkit-transform:none;transform:none}
+.tile input[type=range]{width:100%;margin:10px 0 0;-webkit-appearance:none;height:6px;border-radius:3px;background:rgba(36,26,5,.25)}
+.tile input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:12px;background:var(--ink)}
+.stepper{display:-webkit-box;display:-webkit-flex;display:flex;margin-top:8px}
+.stepper button{-webkit-box-flex:1;-webkit-flex:1;flex:1;font-size:20px;border:0;border-radius:8px;background:var(--panel2);color:var(--text);padding:6px 0;margin-right:6px;-webkit-appearance:none}
+.stepper button:last-child{margin-right:0}
+#empty{color:var(--muted);text-align:center;padding:40px 0}
+.modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:9;-webkit-overflow-scrolling:touch;overflow:auto}
+.modal .box{background:var(--panel);border-radius:16px;margin:60px auto;max-width:440px;padding:18px;width:calc(100% - 24px)}
+.modal h2{margin:0 0 12px;font-size:20px}
+.modal label{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px}
+.modal input{width:100%;font-size:16px;padding:10px;border-radius:8px;border:1px solid #3a4650;background:var(--bg);color:var(--text);-webkit-appearance:none}
+.modal p{font-size:13px;color:var(--muted)}
+.modal .row{margin-top:16px;text-align:right}
+.modal .go{background:var(--on);color:var(--ink);font-weight:600}
+#editbar{display:none;margin-bottom:12px;background:var(--panel);border-radius:12px;padding:10px}
+#editbar p{margin:0 0 8px;font-size:13px;color:var(--muted)}
+#editbar .r{display:-webkit-box;display:-webkit-flex;display:flex}
+#editbar input{-webkit-box-flex:1;-webkit-flex:1;flex:1;min-width:0;font-size:16px;padding:8px 10px;border-radius:8px;border:1px solid #3a4650;background:var(--bg);color:var(--text);-webkit-appearance:none}
+.tile .badge{position:absolute;top:10px;right:10px;font-size:11px;font-weight:600;padding:2px 7px;border-radius:9px;background:rgba(0,0,0,.35);color:#fff}
+.tile.hid{opacity:.4;background:var(--panel)}
+.tile.hid.on{background:var(--panel);color:var(--text)}
+.btn.act{background:var(--on);color:var(--ink);font-weight:600}
+html.light{--bg:#eef0f2;--panel:#fff;--panel2:#e1e6ea;--text:#1a2126;--muted:#667480}
+select{-webkit-appearance:none;appearance:none;width:100%;font-size:15px;padding:8px 28px 8px 10px;border-radius:8px;border:1px solid #3a4650;color:var(--text);background:var(--bg) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%238a96a0'/></svg>") no-repeat right 10px center}
+.tile select{border:0;margin-top:6px;font-size:14px;padding:7px 26px 7px 8px;background-color:var(--panel2)}
+.tile.on select{background-color:rgba(36,26,5,.15);color:var(--ink)}
+.tile.wide{grid-column:span 2}
+.tile .ml{font-size:11px;color:var(--muted);margin-top:8px}
+.tile.on .ml{color:rgba(36,26,5,.7)}
+.tile .ml+select{margin-top:2px}
+.chips{margin-top:8px}
+.chips span{display:inline-block;padding:5px 10px;margin:0 4px 4px 0;border-radius:14px;background:var(--panel2);font-size:.8em}
+.chips span.cur{background:var(--text);color:var(--bg)}
+.tile.on .chips span{background:rgba(36,26,5,.15)}
+.tile.on .chips span.cur{background:var(--ink);color:var(--on)}
+.lay{display:grid;grid-template-columns:1fr 1fr;grid-gap:8px;margin-top:10px}
+.lay label{font-size:12px;color:var(--muted)}
+.lay select{margin-top:3px}
+#editbar .r2{margin-top:10px}
+#editbar .r2 .btn{margin:0 8px 0 0}
+.modal select{margin-top:2px}
+.modal textarea{width:100%;height:150px;font:12px/1.3 Menlo,monospace;padding:8px;border-radius:8px;border:1px solid #3a4650;background:var(--bg);color:var(--text);-webkit-appearance:none}
+.modal .mv .btn{margin:12px 8px 0 0}
+#ic_res,#ic_res2{max-height:140px;overflow:auto;-webkit-overflow-scrolling:touch;margin-top:8px}
+#ic_res span,#ic_res2 span{display:inline-block;width:40px;height:40px;line-height:40px;text-align:center;font-size:24px;border-radius:8px;background:var(--panel2);margin:0 6px 6px 0}
+#ic_res small,#ic_res2 small{font-size:13px;color:var(--muted)}
+#editbar .chk{display:block;margin-top:10px;font-size:15px}
+#editbar .chk input{width:20px;height:20px;vertical-align:-4px;margin:0 8px 0 0;-webkit-appearance:checkbox}
+.tile.big{grid-column:span 2;grid-row:span 2}
+.tile.big .ic{font-size:2.6em}
+.tile.big .nm{font-size:1.2em}
+.tile.big .st{font-size:.95em}
+html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-align:center;-webkit-align-items:center;align-items:center;margin-top:10px;padding-bottom:6px;border-bottom:1px solid var(--panel2);font-weight:600;font-size:1.05em}
+.gh .gn{-webkit-box-flex:1;-webkit-flex:1;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gh button{border:0;border-radius:8px;background:var(--panel2);color:var(--text);font-size:13px;padding:5px 9px;margin-left:6px;-webkit-appearance:none}
+#upd{display:none;background:var(--on);color:var(--ink);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:15px;-webkit-box-align:center;-webkit-align-items:center;align-items:center}
+#upd span{-webkit-box-flex:1;-webkit-flex:1;flex:1}
+#upd .btn{background:var(--ink);color:var(--on);font-weight:600}
+#gh{font-size:12px;color:var(--muted);border:1px solid var(--panel2);border-radius:12px;padding:3px 4px 3px 10px;margin-right:8px;text-decoration:none;white-space:nowrap}
+#gh b{font-weight:400;margin-left:4px;padding:0 6px;font-size:15px}
+</style>
+</head>
+<body>
+<div id="upd"><span>A new version of this page is available.</span><button class="btn" id="updgo">Update now</button></div>
+<header>
+  <div class="clock"><span id="time">--:--</span><small id="date"></small></div>
+  <a id="gh" target="_blank" rel="noopener" style="display:none">Update available<b id="ghx">&times;</b></a>
+  <span id="status">connecting…</span>
+  <button class="btn" id="edit">Edit</button><button class="btn" id="gear">Settings</button>
+</header>
+<div id="tabs"></div>
+<div id="editbar">
+  <p>Tap a card to rename it, resize it, move it, hide it or change its mode controls. Everything saves on this device.</p>
+  <div class="r"><input id="q" type="search" placeholder="Search entities" autocapitalize="off" autocorrect="off"><button class="btn" id="hideall">Hide all</button><button class="btn" id="showall">Show all</button></div>
+  <label class="chk"><input type="checkbox" id="onlyshown"> Only list shown cards</label>
+  <div class="lay">
+    <label>Card size<select id="l_size"><option value="s">Small</option><option value="m">Medium</option><option value="l">Large</option></select></label>
+    <label>Text size<select id="l_text"><option value="s">Small</option><option value="m">Medium</option><option value="l">Large</option></select></label>
+    <label>Theme<select id="l_theme"><option value="dark">Dark</option><option value="light">Light</option></select></label>
+    <label>Accent<select id="l_accent"><option value="amber">Amber</option><option value="teal">Teal</option><option value="blue">Blue</option><option value="rose">Rose</option><option value="green">Green</option></select></label>
+    <label>Clock<select id="l_clock"><option value="1">Show</option><option value="0">Hide</option></select></label>
+    <label>Card icons<select id="l_icons"><option value="1">Show</option><option value="0">Hide</option></select></label>
+    <label>Sensors on All tab<select id="l_allsens"><option value="1">Show</option><option value="0">Hide</option></select></label>
+    <label>Icon style<select id="l_iconset"><option value="mdi">Home Assistant</option><option value="emoji">Emoji</option></select></label>
+  </div>
+  <div class="r2"><button class="btn" id="bkbtn">Backup / restore</button><button class="btn" id="rstlay">Reset layout</button></div>
+</div>
+<div id="grid"></div>
+<div id="empty" style="display:none"></div>
+
+<div id="cfg" class="modal"><div class="box">
+  <h2>Connect to Home Assistant</h2>
+  <label for="url">Address</label>
+  <input id="url" type="url" autocapitalize="off" autocorrect="off" placeholder="http://homeassistant.local:8123">
+  <label for="tok">Long-lived access token</label>
+  <input id="tok" type="text" autocapitalize="off" autocorrect="off" placeholder="Paste token">
+  <p>Create a token in Home Assistant under your profile &rarr; Security. Leave the address blank if this page is served from Home Assistant itself.</p>
+  <p><button class="btn" id="reload" style="margin-left:0">Reload latest version</button> <span id="bld"></span></p>
+  <div class="row"><button class="btn" id="cancel">Cancel</button><button class="btn go" id="save">Save</button></div>
+</div></div>
+
+<div id="ced" class="modal"><div class="box">
+  <h2 id="c_title">Edit card</h2>
+  <label for="c_name">Name</label>
+  <input id="c_name" type="text" placeholder="Default name" autocorrect="off">
+  <label for="c_icon" id="c_icon_l">Icon: search by name (e.g. lamp), or type an mdi: name or an emoji. Blank uses the default.</label>
+  <input id="c_icon" type="text" maxlength="60" autocapitalize="off" autocorrect="off">
+  <div id="ic_res"></div>
+  <div id="ic2wrap">
+    <label for="c_icon2">Icon when off / closed / locked (optional)</label>
+    <input id="c_icon2" type="text" maxlength="60" autocapitalize="off" autocorrect="off">
+    <div id="ic_res2"></div>
+  </div>
+  <label for="c_wide">Size</label>
+  <select id="c_wide"><option value="0">Normal</option><option value="1">Wide (2 columns)</option><option value="2">Large (2 columns, 2 rows)</option></select>
+  <label for="c_group">Group</label>
+  <select id="c_group"></select>
+  <input id="c_gnew" type="text" maxlength="40" placeholder="New group name" style="display:none;margin-top:8px">
+  <label for="c_modes" id="c_modes_l">Mode controls</label>
+  <select id="c_modes"><option value="drop">Dropdown</option><option value="btns">Buttons</option><option value="off">Hidden</option></select>
+  <label for="c_vis">Visibility</label>
+  <select id="c_vis"><option value="0">Shown</option><option value="1">Hidden</option></select>
+  <div class="mv"><button class="btn" id="c_up">&larr; Earlier</button><button class="btn" id="c_dn">Later &rarr;</button></div>
+  <div class="row"><button class="btn" id="c_reset">Reset card</button><button class="btn" id="c_cancel">Cancel</button><button class="btn go" id="c_save">Save</button></div>
+</div></div>
+<div id="bk" class="modal"><div class="box">
+  <h2>Backup / restore</h2>
+  <p>Copy this text to keep your layout or paste it into another device, then tap Apply there.</p>
+  <textarea id="bk_t" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+  <div class="row"><button class="btn" id="bk_close">Close</button><button class="btn go" id="bk_apply">Apply</button></div>
+</div></div>
+
+<script>
+(function () {
+  'use strict';
+  // Bump this whenever the file is edited. Open copies of the page compare it with the server's copy and offer to update.
+  var BUILD = '2026-11-03c';
+  var POLL_MS = 5000;
+  // ---- Defaults for every device. Edit these, or use the Edit button on the page for per-device changes. ----
+  var CONFIG = {
+    hiddenDomains:  [],            // e.g. ['automation', 'script']
+    hiddenEntities: [],            // e.g. ['light.garage_strip', 'switch.printer']
+    names:          {},            // e.g. { 'light.lounge_main': 'Lounge' }
+    allTabExclude:  [],  // domains always left out of the "All" tab, e.g. ['sensor']. Sensors can also be toggled in Edit mode.
+    // Optional: tell me when a newer build exists on GitHub (it never installs anything by itself).
+    // updateUrl is the raw file, e.g. 'https://raw.githubusercontent.com/you/ha-dashboard/main/ha-dashboard.html'
+    // repoUrl is where the "Update available" pill links to, e.g. 'https://github.com/you/ha-dashboard'
+    updateUrl:      '',
+    repoUrl:        '',
+    // Home Assistant's icons are Material Design Icons. This loads them as a font.
+    // To work offline, self-host the @mdi/font package and use e.g. '/local/mdi/css/materialdesignicons.min.css'
+    mdiCss:         'https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css'
+  };
+  var S = { groups: [], cards: {}, order: {}, layout: defLayout(), editId: null, dt: null, cols: 1, edit: false, local: {}, shownIds: [], q: '', url: '', token: '', states: {}, filter: 'all', busy: false, timer: null, drag: false };
+
+  // domain -> label, icon, how a tap behaves
+  var DOM = {
+    light:          { n: 'Lights',      i: '\uD83D\uDCA1', a: 'homeassistant/toggle' },
+    switch:         { n: 'Switches',    i: '\uD83D\uDD0C', a: 'homeassistant/toggle' },
+    input_boolean:  { n: 'Toggles',     i: '\uD83C\uDF9A', a: 'homeassistant/toggle' },
+    fan:            { n: 'Fans',        i: '\uD83C\uDF00', a: 'homeassistant/toggle' },
+    cover:          { n: 'Covers',      i: '\uD83D\uDEAA', a: 'cover/toggle' },
+    lock:           { n: 'Locks',       i: '\uD83D\uDD12', a: 'lock' },
+    input_select:   { n: 'Modes',       i: '\uD83D\uDCCB', a: null },
+    select:         { n: 'Selectors',   i: '\uD83D\uDCCB', a: null },
+    climate:        { n: 'Climate',     i: '\uD83C\uDF21', a: null },
+    scene:          { n: 'Scenes',      i: '\uD83C\uDFAC', a: 'scene/turn_on' },
+    script:         { n: 'Scripts',     i: '\u25B6\uFE0F', a: 'script/turn_on' },
+    button:         { n: 'Buttons',     i: '\uD83D\uDD18', a: 'button/press' },
+    automation:     { n: 'Automations', i: '\u2699\uFE0F', a: 'homeassistant/toggle' },
+    sensor:         { n: 'Sensors',     i: '\uD83D\uDCCA', a: null },
+    binary_sensor:  { n: 'Status',      i: '\uD83D\uDC41', a: null }
+  };
+  var ORDER = ['light','switch','input_boolean','fan','cover','lock','climate','input_select','select','scene','script','button','automation','sensor','binary_sensor'];
+
+  function $(id) { return document.getElementById(id); }
+  function store(k, v) { try { if (v === undefined) { return localStorage.getItem(k); } localStorage.setItem(k, v); } catch (e) {} return null; }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) { e.className = cls; } if (text !== undefined) { e.textContent = text; } return e; }
+  function dom(id) { return id.split('.')[0]; }
+  function isHidden(id) {
+    if (S.local.hasOwnProperty(id)) { return S.local[id]; }
+    return CONFIG.hiddenEntities.indexOf(id) > -1 || CONFIG.hiddenDomains.indexOf(dom(id)) > -1;
+  }
+  function setHidden(id, hide) {
+    var def = CONFIG.hiddenEntities.indexOf(id) > -1 || CONFIG.hiddenDomains.indexOf(dom(id)) > -1;
+    if (hide === def) { delete S.local[id]; } else { S.local[id] = hide; }
+    store('ha_hidden', JSON.stringify(S.local));
+  }
+  function nameOf(s) { var cn = S.cards[s.entity_id]; if (cn && cn.name) { return cn.name; } if (CONFIG.names[s.entity_id]) { return CONFIG.names[s.entity_id]; } return (s.attributes && s.attributes.friendly_name) || s.entity_id; }
+
+  /* ---------- clock ---------- */
+  function tick() {
+    var d = new Date(), h = d.getHours(), m = d.getMinutes();
+    $('time').textContent = (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+    var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    var mons = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    $('date').textContent = days[d.getDay()] + ' ' + d.getDate() + ' ' + mons[d.getMonth()];
+  }
+
+  /* ---------- API ---------- */
+  function api(method, path, body) {
+    var opts = { method: method, headers: { 'Authorization': 'Bearer ' + S.token, 'Content-Type': 'application/json' } };
+    if (body) { opts.body = JSON.stringify(body); }
+    return fetch(S.url + path, opts).then(function (r) {
+      if (r.status === 401) { throw new Error('Token rejected'); }
+      if (!r.ok) { throw new Error('HTTP ' + r.status); }
+      return r.json();
+    });
+  }
+  function setStatus(msg, bad) { var s = $('status'); s.textContent = msg; s.className = bad ? 'bad' : ''; }
+
+  function poll() {
+    if (!S.token || S.busy || S.drag) { return; }
+    S.busy = true;
+    api('GET', '/api/states').then(function (list) {
+      var m = {};
+      for (var i = 0; i < list.length; i++) { m[list[i].entity_id] = list[i]; }
+      S.states = m;
+      S.busy = false;
+      setStatus('live');
+      render();
+    }).catch(function (e) {
+      S.busy = false;
+      setStatus(e.message === 'Token rejected' ? 'Token rejected' : 'Can\u2019t reach Home Assistant', true);
+    });
+  }
+
+  function call(service, data) {
+    var p = service.split('/');
+    return api('POST', '/api/services/' + p[0] + '/' + p[1], data).then(function () {
+      setTimeout(poll, 500);
+    }).catch(function (e) { setStatus('Command failed: ' + e.message, true); });
+  }
+
+  /* ---------- actions ---------- */
+  function tap(s) {
+    var d = dom(s.entity_id), cfg = DOM[d];
+    if (!cfg || !cfg.a) { return; }
+    var svc = cfg.a;
+    if (d === 'lock') { svc = s.state === 'locked' ? 'lock/unlock' : 'lock/lock'; }
+    call(svc, { entity_id: s.entity_id });
+  }
+
+  /* ---------- rendering ---------- */
+  function stateText(s) {
+    var d = dom(s.entity_id), a = s.attributes || {};
+    if (s.state === 'unavailable') { return 'Unavailable'; }
+    if (d === 'input_select' || d === 'select') { return ''; }
+    if (d === 'sensor') { return s.state + (a.unit_of_measurement ? ' ' + a.unit_of_measurement : ''); }
+    if (d === 'light' && s.state === 'on' && a.brightness) { return Math.round(a.brightness / 2.55) + '%'; }
+    if (d === 'climate') {
+      var t = (a.current_temperature !== undefined ? a.current_temperature + '\u00B0 now' : s.state);
+      return t;
+    }
+    if (d === 'scene' || d === 'script' || d === 'button') { return 'Tap to run'; }
+    return s.state.charAt(0).toUpperCase() + s.state.slice(1).replace(/_/g, ' ');
+  }
+  function isOn(s) {
+    var d = dom(s.entity_id);
+    if (d === 'cover') { return s.state === 'open'; }
+    if (d === 'lock') { return s.state === 'unlocked'; }
+    if (d === 'climate') { return s.state !== 'off'; }
+    return s.state === 'on';
+  }
+
+  function makeTile(s) {
+    var d = dom(s.entity_id), cfg = DOM[d], a = s.attributes || {};
+    var t = el('div', 'tile');
+    var cd = card(s.entity_id);
+    var sz = cd.size || (cd.wide ? 'wide' : '');
+    if (sz && S.cols > 1) { t.className += sz === 'big' ? ' big' : ' wide'; }
+    var toggleable = !!cfg.a;
+    var on = isOn(s);
+    if (d !== 'scene' && d !== 'script' && d !== 'button' && d !== 'sensor' && d !== 'input_select' && d !== 'select') { t.className += on ? ' on' : ' off'; }
+    if (s.state === 'unavailable') { t.className += ' off'; }
+    if (!toggleable) { t.className += ' ro'; }
+    if (S.layout.icons) { t.appendChild(iconNode(iconFor(s))); }
+    t.appendChild(el('div', 'nm', nameOf(s)));
+    t.appendChild(el('div', 'st', stateText(s)));
+    if (S.edit) {
+      var hd = isHidden(s.entity_id);
+      if (hd) { t.className += ' hid'; }
+      t.appendChild(el('div', 'badge', hd ? 'Hidden' : 'Shown'));
+      t.addEventListener('click', function () { openCard(s.entity_id); });
+      return t;
+    }
+
+    if (d === 'light' && on && a.supported_color_modes && a.brightness !== undefined &&
+        !(a.supported_color_modes.length === 1 && a.supported_color_modes[0] === 'onoff')) {
+      var r = document.createElement('input');
+      r.type = 'range'; r.min = 1; r.max = 100; r.value = Math.round(a.brightness / 2.55);
+      r.addEventListener('click', function (e) { e.stopPropagation(); });
+      r.addEventListener('touchstart', function (e) { e.stopPropagation(); S.drag = true; });
+      r.addEventListener('touchend', function () { S.drag = false; });
+      r.addEventListener('change', function () {
+        S.drag = false;
+        call('light/turn_on', { entity_id: s.entity_id, brightness_pct: parseInt(r.value, 10) });
+      });
+      t.appendChild(r);
+    }
+    if (d === 'climate' && a.temperature !== undefined) {
+      var step = a.target_temp_step || 0.5;
+      var box = el('div', 'stepper');
+      var mk = function (label, delta) {
+        var b = el('button', '', label);
+        b.addEventListener('click', function (e) {
+          e.stopPropagation();
+          call('climate/set_temperature', { entity_id: s.entity_id, temperature: Math.round((a.temperature + delta) * 10) / 10 });
+        });
+        return b;
+      };
+      box.appendChild(mk('\u2212', -step));
+      box.appendChild(el('button', '', a.temperature + '\u00B0'));
+      box.appendChild(mk('+', step));
+      box.lastChild.previousSibling.disabled = true;
+      t.appendChild(box);
+    }
+    var mode = cd.modes || 'drop';
+    if (mode !== 'off' && s.state !== 'unavailable') {
+      var sels = selectsOf(s);
+      sels.forEach(function (x) { t.appendChild(modeControl(s, x, mode, sels.length > 1)); });
+    }
+    if (toggleable && s.state !== 'unavailable') {
+      t.addEventListener('click', function () { tap(s); });
+    }
+    return t;
+  }
+
+  function cmp(a, b) {
+    var oa = S.order[a.entity_id], ob = S.order[b.entity_id];
+    if (oa !== undefined && ob !== undefined) { return oa - ob; }
+    if (oa !== undefined) { return -1; }
+    if (ob !== undefined) { return 1; }
+    var da = ORDER.indexOf(dom(a.entity_id)), db = ORDER.indexOf(dom(b.entity_id));
+    if (da !== db) { return da - db; }
+    return nameOf(a).toLowerCase() < nameOf(b).toLowerCase() ? -1 : 1;
+  }
+
+  function render() {
+    var ids = Object.keys(S.states), vis = [], has = {}, i, q = S.edit ? S.q.toLowerCase() : '';
+    for (i = 0; i < ids.length; i++) {
+      var d = dom(ids[i]), st = S.states[ids[i]];
+      if (!DOM[d]) { continue; }
+      if ((!S.edit || S.onlyShown) && isHidden(ids[i])) { continue; }
+      if (q && (nameOf(st).toLowerCase() + ' ' + ids[i]).indexOf(q) < 0) { continue; }
+      vis.push(st); has[d] = true;
+    }
+    var tabs = $('tabs'); tabs.innerHTML = '';
+    var avail = [{ k: 'all', n: 'All' }];
+    for (i = 0; i < ORDER.length; i++) { if (has[ORDER[i]]) { avail.push({ k: ORDER[i], n: DOM[ORDER[i]].n }); } }
+    if (!has[S.filter] && S.filter !== 'all') { S.filter = 'all'; }
+    avail.forEach(function (x) {
+      var t = el('span', 'tab' + (x.k === S.filter ? ' sel' : ''), x.n);
+      t.addEventListener('click', function () { S.filter = x.k; render(); });
+      tabs.appendChild(t);
+    });
+    var list = vis.filter(function (s) {
+      var d = dom(s.entity_id);
+      if (S.filter === 'all') { return q || (CONFIG.allTabExclude.indexOf(d) < 0 && (S.layout.allsens || (d !== 'sensor' && d !== 'binary_sensor'))); }
+      return S.filter === d;
+    });
+    list.sort(cmp);
+    var grid = $('grid'); grid.innerHTML = '';
+    S.cols = Math.max(1, Math.floor((grid.clientWidth + 10) / (SIZES[S.layout.size] + 10)));
+    S.shownIds = [];
+    var secs = [{ items: [] }], gi = {};
+    S.groups.forEach(function (g, i) { secs.push({ name: g, items: [] }); gi[g] = i + 1; });
+    list.forEach(function (s) { secs[gi[groupOf(s.entity_id)] || 0].items.push(s); });
+    var showEmpty = S.edit && !q && S.filter === 'all';
+    secs.forEach(function (sec, si) {
+      if (si > 0 && !sec.items.length && !showEmpty) { return; }
+      if (si > 0) { grid.appendChild(groupHeader(sec.name, si - 1)); }
+      sec.items.forEach(function (s) { grid.appendChild(makeTile(s)); S.shownIds.push(s.entity_id); });
+    });
+    var em = $('empty');
+    em.style.display = list.length ? 'none' : 'block';
+    em.textContent = list.length ? '' : (S.edit ? 'No matching entities.' : 'Nothing to show. Check your connection in Settings, or tap Edit to unhide items.');
+  }
+
+  function setEdit(on) {
+    S.edit = on; S.q = ''; $('q').value = '';
+    $('editbar').style.display = on ? 'block' : 'none';
+    $('edit').textContent = on ? 'Done' : 'Edit';
+    $('edit').className = on ? 'btn act' : 'btn';
+    render();
+  }
+  function bulk(hide) { S.shownIds.forEach(function (id) { setHidden(id, hide); }); render(); }
+
+  /* ---------- layout, modes, card editor ---------- */
+  var SIZES = { s: 118, m: 150, l: 200 }, TEXT = { s: 14, m: 16, l: 19 };
+  var ACC = { amber: ['#f2b134', '#241a05'], teal: ['#3cc7b0', '#04231e'], blue: ['#5aa9f2', '#04182b'], rose: ['#f0708f', '#2b0613'], green: ['#8bd05a', '#102105'] };
+  function defLayout() { return { size: 'm', text: 'm', theme: 'dark', accent: 'amber', clock: true, icons: true, iconset: 'mdi', allsens: true }; }
+  function card(id) { return S.cards[id] || {}; }
+  function loadJ(k, def) { try { return JSON.parse(store(k)) || def; } catch (e) { return def; } }
+  function saveAll() { store('ha_layout', JSON.stringify(S.layout)); store('ha_cards', JSON.stringify(S.cards)); store('ha_order', JSON.stringify(S.order)); store('ha_groups', JSON.stringify(S.groups)); store('ha_hidden', JSON.stringify(S.local)); }
+  function pretty(o) { o = String(o).replace(/_/g, ' '); return o.charAt(0).toUpperCase() + o.slice(1); }
+
+  function applyLayout() {
+    var L = S.layout, r = document.documentElement, a = ACC[L.accent] || ACC.amber, g = $('grid');
+    r.className = L.theme === 'light' ? 'light' : '';
+    r.style.setProperty('--on', a[0]); r.style.setProperty('--ink', a[1]);
+    g.style.gridTemplateColumns = 'repeat(auto-fill,minmax(' + SIZES[L.size] + 'px,1fr))';
+    g.style.fontSize = TEXT[L.text] + 'px';
+    $('time').parentNode.style.visibility = L.clock ? 'visible' : 'hidden';
+    $('l_size').value = L.size; $('l_text').value = L.text; $('l_theme').value = L.theme; $('l_accent').value = L.accent;
+    $('l_clock').value = L.clock ? '1' : '0'; $('l_icons').value = L.icons ? '1' : '0'; $('l_iconset').value = L.iconset; $('l_allsens').value = L.allsens ? '1' : '0';
+  }
+
+  // Which dropdown-style controls an entity offers
+  function selectsOf(s) {
+    var d = dom(s.entity_id), a = s.attributes || {}, out = [];
+    function add(label, opts, cur, svc, key) { if (opts && opts.length > 1) { out.push({ label: label, opts: opts, cur: cur, svc: svc, key: key }); } }
+    if (d === 'input_select' || d === 'select') { add('Mode', a.options, s.state, d + '/select_option', 'option'); }
+    else if (d === 'climate') {
+      add('Mode', a.hvac_modes, s.state, 'climate/set_hvac_mode', 'hvac_mode');
+      add('Preset', a.preset_modes, a.preset_mode, 'climate/set_preset_mode', 'preset_mode');
+      add('Fan', a.fan_modes, a.fan_mode, 'climate/set_fan_mode', 'fan_mode');
+    }
+    else if (d === 'fan') { add('Preset', a.preset_modes, a.preset_mode, 'fan/set_preset_mode', 'preset_mode'); }
+    else if (d === 'light' && s.state === 'on') { add('Effect', a.effect_list, a.effect, 'light/turn_on', 'effect'); }
+    return out;
+  }
+
+  function modeControl(s, sel, mode, label) {
+    var w = el('div', 'mc');
+    w.addEventListener('click', function (e) { e.stopPropagation(); });
+    var send = function (v) { var d = { entity_id: s.entity_id }; d[sel.key] = v; call(sel.svc, d); };
+    if (label) { w.appendChild(el('div', 'ml', sel.label)); }
+    if (mode === 'btns') {
+      var ch = el('div', 'chips');
+      sel.opts.forEach(function (o) {
+        var b = el('span', o === sel.cur ? 'cur' : '', pretty(o));
+        b.addEventListener('click', function () { send(o); });
+        ch.appendChild(b);
+      });
+      w.appendChild(ch);
+    } else {
+      var sl = document.createElement('select');
+      if (sel.opts.indexOf(sel.cur) < 0) { var o0 = document.createElement('option'); o0.value = ''; o0.textContent = '\u2014'; sl.appendChild(o0); }
+      sel.opts.forEach(function (o) {
+        var op = document.createElement('option'); op.value = o; op.textContent = pretty(o); sl.appendChild(op);
+      });
+      sl.value = sel.cur === undefined || sel.cur === null ? '' : sel.cur;
+      // keep the list from refreshing (and closing the picker) while it is open
+      sl.addEventListener('focus', function () { S.drag = true; clearTimeout(S.dt); S.dt = setTimeout(function () { S.drag = false; }, 30000); });
+      sl.addEventListener('blur', function () { S.drag = false; });
+      sl.addEventListener('change', function () { S.drag = false; if (sl.value) { send(sl.value); } });
+      w.appendChild(sl);
+    }
+    return w;
+  }
+
+  function move(id, dir) {
+    var ids = S.shownIds.filter(function (x) { return groupOf(x) === groupOf(id); }), i = ids.indexOf(id), j = i + dir;
+    if (i < 0 || j < 0 || j >= ids.length) { return; }
+    var t = ids[i]; ids[i] = ids[j]; ids[j] = t;
+    ids.forEach(function (x, k) { S.order[x] = k * 10; });
+    saveAll(); render();
+  }
+
+  function openCard(id) {
+    var s = S.states[id], c = card(id), d = dom(id);
+    S.editId = id;
+    $('c_title').textContent = nameOf(s);
+    $('c_name').value = c.name || ''; $('c_icon').value = c.icon || '';
+    $('c_wide').value = c.size === 'big' ? '2' : (c.size === 'wide' || c.wide) ? '1' : '0'; $('c_modes').value = c.modes || 'drop';
+    $('c_vis').value = isHidden(id) ? '1' : '0';
+    fillGroups(groupOf(id));
+    var m = ['input_select', 'select', 'climate', 'fan', 'light'].indexOf(d) > -1;
+    $('c_modes').style.display = m ? 'block' : 'none'; $('c_modes_l').style.display = m ? 'block' : 'none';
+    var sf = STATEFUL.indexOf(d) > -1;
+    $('c_icon2').value = c.iconOff || ''; $('ic_res2').innerHTML = '';
+    $('ic2wrap').style.display = sf ? 'block' : 'none';
+    $('c_icon_l').textContent = sf ? 'Icon when on / open / unlocked: search by name (e.g. lamp), or type an mdi: name or an emoji. Blank uses the default.' : 'Icon: search by name (e.g. lamp), or type an mdi: name or an emoji. Blank uses the default.';
+    $('ic_res').innerHTML = ''; $('ced').style.display = 'block';
+  }
+  function saveCard() {
+    var id = S.editId, c = {};
+    var n = $('c_name').value.replace(/^\s+|\s+$/g, ''), ic = $('c_icon').value.replace(/\s+/g, '');
+    if (n) { c.name = n; }
+    if (ic) { c.icon = ic; }
+    var ic2 = $('c_icon2').value.replace(/\s+/g, '');
+    if (ic2 && STATEFUL.indexOf(dom(id)) > -1) { c.iconOff = ic2; }
+    if ($('c_wide').value === '1') { c.size = 'wide'; } else if ($('c_wide').value === '2') { c.size = 'big'; }
+    if ($('c_modes').value !== 'drop') { c.modes = $('c_modes').value; }
+    var g = $('c_group').value;
+    if (g === '__new') {
+      var gn = $('c_gnew').value.replace(/^\s+|\s+$/g, '');
+      g = '';
+      if (gn) { if (S.groups.indexOf(gn) < 0) { S.groups.push(gn); } g = gn; }
+    }
+    if (g) { c.group = g; }
+    if (Object.keys(c).length) { S.cards[id] = c; } else { delete S.cards[id]; }
+    setHidden(id, $('c_vis').value === '1');
+    saveAll(); $('ced').style.display = 'none'; render();
+  }
+  function resetCard() {
+    var id = S.editId;
+    delete S.cards[id]; delete S.order[id]; delete S.local[id];
+    saveAll(); $('ced').style.display = 'none'; render();
+  }
+
+  /* ---------- groups ---------- */
+  function ensureGroups() {
+    Object.keys(S.cards).forEach(function (id) { var g = S.cards[id].group; if (g && S.groups.indexOf(g) < 0) { S.groups.push(g); } });
+  }
+  function groupOf(id) { var g = card(id).group; return g && S.groups.indexOf(g) > -1 ? g : ''; }
+  function fillGroups(cur) {
+    var sel = $('c_group');
+    sel.innerHTML = '';
+    function add(v, t) { var o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); }
+    add('', 'None');
+    S.groups.forEach(function (g) { add(g, g); });
+    add('__new', '+ New group\u2026');
+    sel.value = cur || '';
+    $('c_gnew').value = ''; $('c_gnew').style.display = 'none';
+  }
+  function groupHeader(name, i) {
+    var h = el('div', 'gh');
+    h.appendChild(el('span', 'gn', name));
+    if (S.edit) {
+      [['\u2191', function () { moveGroup(i, -1); }], ['\u2193', function () { moveGroup(i, 1); }],
+       ['Rename', function () { renameGroup(name); }], ['Delete', function () { deleteGroup(name); }]].forEach(function (b) {
+        var x = el('button', '', b[0]); x.addEventListener('click', b[1]); h.appendChild(x);
+      });
+    }
+    return h;
+  }
+  function moveGroup(i, dir) {
+    var j = i + dir; if (j < 0 || j >= S.groups.length) { return; }
+    var t = S.groups[i]; S.groups[i] = S.groups[j]; S.groups[j] = t;
+    saveAll(); render();
+  }
+  function renameGroup(name) {
+    var n = prompt('Rename group', name);
+    if (n === null) { return; }
+    n = n.replace(/^\s+|\s+$/g, '');
+    if (!n || n === name) { return; }
+    if (S.groups.indexOf(n) > -1) { alert('A group with that name already exists.'); return; }
+    S.groups[S.groups.indexOf(name)] = n;
+    Object.keys(S.cards).forEach(function (id) { if (S.cards[id].group === name) { S.cards[id].group = n; } });
+    saveAll(); render();
+  }
+  function deleteGroup(name) {
+    if (!confirm('Delete the group \u201C' + name + '\u201D? Its cards stay on the dashboard, ungrouped.')) { return; }
+    S.groups.splice(S.groups.indexOf(name), 1);
+    Object.keys(S.cards).forEach(function (id) {
+      if (S.cards[id].group === name) { delete S.cards[id].group; if (!Object.keys(S.cards[id]).length) { delete S.cards[id]; } }
+    });
+    saveAll(); render();
+  }
+
+  /* ---------- Home Assistant (Material Design) icons ---------- */
+  var MDI = { light: 'lightbulb', switch: 'toggle-switch', input_boolean: 'toggle-switch', fan: 'fan', cover: 'window-shutter',
+    lock: 'lock', climate: 'thermostat', input_select: 'format-list-bulleted', select: 'format-list-bulleted', scene: 'palette',
+    script: 'script-text-play', button: 'gesture-tap-button', automation: 'robot', sensor: 'chart-line', binary_sensor: 'radiobox-marked' };
+  var MDIS = { 'light:off': 'lightbulb-outline', 'lock:unlocked': 'lock-open-variant', 'cover:open': 'window-shutter-open', 'fan:off': 'fan-off',
+    'switch:off': 'toggle-switch-off', 'input_boolean:off': 'toggle-switch-off' };
+  var STATEFUL = ['light', 'switch', 'input_boolean', 'fan', 'cover', 'lock', 'climate', 'automation', 'binary_sensor'];
+  function iconFor(s) {
+    var d = dom(s.entity_id), c = card(s.entity_id), a = s.attributes || {};
+    var mdi = S.layout.iconset === 'mdi' && S.mdiOk !== false;
+    var pick = (STATEFUL.indexOf(d) > -1 && !isOn(s) && c.iconOff) ? c.iconOff : c.icon;
+    if (pick) {
+      if (pick.indexOf('mdi:') !== 0) { return pick; }
+      if (mdi) { return pick; }
+    } else if (mdi && a.icon && String(a.icon).indexOf('mdi:') === 0) { return a.icon; }
+    if (mdi) { return 'mdi:' + (MDIS[d + ':' + s.state] || MDI[d]); }
+    return DOM[d].i;
+  }
+  function iconNode(str) {
+    var n = el('div', 'ic');
+    if (str.indexOf('mdi:') === 0) { n.appendChild(el('i', 'mdi mdi-' + str.slice(4).replace(/[^a-z0-9-]/gi, ''))); }
+    else { n.textContent = str; }
+    return n;
+  }
+  function loadMdi() {
+    if (!CONFIG.mdiCss) { S.mdiOk = false; return; }
+    var l = document.createElement('link');
+    l.rel = 'stylesheet'; l.href = CONFIG.mdiCss;
+    l.onload = function () { S.mdiOk = true; };
+    l.onerror = function () { S.mdiOk = false; render(); };
+    document.head.appendChild(l);
+  }
+  // Icon names are read from the same stylesheet, so search works for any icon the font has
+  var MDINAMES = null, mdiBusy = false, mdiWait = [];
+  function withNames(cb) {
+    if (MDINAMES) { cb(); return; }
+    mdiWait.push(cb);
+    if (mdiBusy || !CONFIG.mdiCss) { return; }
+    mdiBusy = true;
+    fetch(CONFIG.mdiCss).then(function (r) { return r.text(); }).then(function (t) {
+      var re = /\.mdi-([a-z0-9-]+)::?before/g, m, seen = {}, out = [];
+      while ((m = re.exec(t))) {
+        if (!seen[m[1]] && !/^(\d+px|rotate-\d+|flip-[hv]|spin|light|dark|inactive)$/.test(m[1])) { seen[m[1]] = 1; out.push(m[1]); }
+      }
+      MDINAMES = out; mdiBusy = false; var w = mdiWait; mdiWait = []; w.forEach(function (f) { f(); });
+    }).catch(function () { mdiBusy = false; mdiWait = []; $(S.icBox || 'ic_res').innerHTML = '<small>Couldn\u2019t load the icon list. You can still type an mdi: name.</small>'; });
+  }
+  function iconSearch(inp, boxId) {
+    S.icBox = boxId;
+    var v = $(inp).value.replace(/^\s+|\s+$/g, '').toLowerCase().replace(/^mdi:/, ''), box = $(boxId);
+    box.innerHTML = '';
+    if (!/^[a-z0-9-]{2,}$/.test(v) || S.layout.iconset !== 'mdi' || S.mdiOk === false) { return; }
+    withNames(function () {
+      var hits = [], i, n;
+      for (i = 0; i < MDINAMES.length && hits.length < 60; i++) { if (MDINAMES[i].indexOf(v) === 0) { hits.push(MDINAMES[i]); } }
+      for (i = 0; i < MDINAMES.length && hits.length < 60; i++) { n = MDINAMES[i]; if (n.indexOf(v) > 0) { hits.push(n); } }
+      box.innerHTML = '';
+      if (!hits.length) { box.innerHTML = '<small>No icons match.</small>'; return; }
+      hits.forEach(function (n) {
+        var b = el('span'); b.appendChild(el('i', 'mdi mdi-' + n)); b.title = n;
+        b.addEventListener('click', function () { $(inp).value = 'mdi:' + n; box.innerHTML = ''; });
+        box.appendChild(b);
+      });
+    });
+  }
+
+  /* ---------- self-update (beats the Home Screen / HA cache) ---------- */
+  function pageBase() { return location.href.split('#')[0].split('?')[0]; }
+  function goLatest(tag) { location.href = pageBase() + '?v=' + encodeURIComponent(tag || Date.now()); }
+  function checkUpdate() {
+    if (location.protocol === 'file:' || S.chk) { return; }
+    S.chk = true;
+    fetch(pageBase() + '?_=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (t) {
+      S.chk = false;
+      var m = /var BUILD = '([^']+)'/.exec(t);
+      if (!m || m[1] === BUILD) { return; }
+      var open = S.edit || $('cfg').style.display === 'block' || $('ced').style.display === 'block' || $('bk').style.display === 'block';
+      var tried = null;
+      try { tried = sessionStorage.getItem('ha_upd'); } catch (e) {}
+      if (!open && tried !== m[1]) {
+        try { sessionStorage.setItem('ha_upd', m[1]); } catch (e) {}
+        goLatest(m[1]);
+      } else {
+        $('upd').style.display = 'flex';
+        $('updgo').onclick = function () { goLatest(m[1]); };
+      }
+    }).catch(function () { S.chk = false; });
+  }
+
+  /* ---------- optional GitHub version check (informational only) ---------- */
+  function checkRepo() {
+    if (!CONFIG.updateUrl || S.ghBusy) { return; }
+    S.ghBusy = true; S.ghT = new Date().getTime();
+    fetch(CONFIG.updateUrl, { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) { throw new Error('http'); }
+      return r.text();
+    }).then(function (t) {
+      S.ghBusy = false;
+      var m = /var BUILD = '([^']+)'/.exec(t), a = $('gh');
+      if (!m || !(m[1] > BUILD) || store('ha_gh_skip') === m[1]) { a.style.display = 'none'; return; }
+      a.href = CONFIG.repoUrl || CONFIG.updateUrl;
+      a.title = 'Latest build ' + m[1] + ' (this page is ' + BUILD + ')';
+      a.setAttribute('data-v', m[1]);
+      a.style.display = 'inline-block';
+    }).catch(function () { S.ghBusy = false; });
+  }
+
+  /* ---------- settings ---------- */
+  function openCfg() { $('url').value = S.url; $('tok').value = S.token; $('cfg').style.display = 'block'; }
+  function closeCfg() { $('cfg').style.display = 'none'; }
+  function saveCfg() {
+    S.url = $('url').value.replace(/^\s+|\s+$/g, '').replace(/\/+$/, '');
+    S.token = $('tok').value.replace(/\s+/g, '');
+    store('ha_url', S.url); store('ha_token', S.token);
+    closeCfg(); setStatus('connecting…'); S.busy = false; poll();
+  }
+
+  /* ---------- start ---------- */
+  S.url = store('ha_url') || '';
+  S.token = store('ha_token') || '';
+  try { S.local = JSON.parse(store('ha_hidden') || '{}') || {}; } catch (e) { S.local = {}; }
+  $('edit').addEventListener('click', function () { setEdit(!S.edit); });
+  $('onlyshown').addEventListener('change', function () { S.onlyShown = this.checked; render(); });
+  $('q').addEventListener('input', function () { S.q = this.value; render(); });
+  $('hideall').addEventListener('click', function () { bulk(true); });
+  $('showall').addEventListener('click', function () { bulk(false); });
+  $('reload').addEventListener('click', function () { goLatest(); });
+  $('bld').textContent = 'Build ' + BUILD;
+  $('gear').addEventListener('click', openCfg);
+  $('cancel').addEventListener('click', closeCfg);
+  $('save').addEventListener('click', saveCfg);
+  var ly = loadJ('ha_layout', {}), lk;
+  for (lk in ly) { if (ly.hasOwnProperty(lk)) { S.layout[lk] = ly[lk]; } }
+  S.cards = loadJ('ha_cards', {}); S.order = loadJ('ha_order', {}); S.groups = loadJ('ha_groups', []); ensureGroups();
+  ['size', 'text', 'theme', 'accent', 'clock', 'icons', 'iconset', 'allsens'].forEach(function (k) {
+    $('l_' + k).addEventListener('change', function () {
+      S.layout[k] = (k === 'clock' || k === 'icons' || k === 'allsens') ? this.value === '1' : this.value;
+      saveAll(); applyLayout(); render();
+    });
+  });
+  $('rstlay').addEventListener('click', function () { if (confirm('Reset size, text, theme and accent to defaults?')) { S.layout = defLayout(); saveAll(); applyLayout(); render(); } });
+  $('c_group').addEventListener('change', function () { var n = this.value === '__new'; $('c_gnew').style.display = n ? 'block' : 'none'; if (n) { $('c_gnew').focus(); } });
+  $('c_save').addEventListener('click', saveCard);
+  $('c_cancel').addEventListener('click', function () { $('ced').style.display = 'none'; });
+  $('c_reset').addEventListener('click', resetCard);
+  $('c_up').addEventListener('click', function () { move(S.editId, -1); });
+  $('c_dn').addEventListener('click', function () { move(S.editId, 1); });
+  $('bkbtn').addEventListener('click', function () {
+    $('bk_t').value = JSON.stringify({ layout: S.layout, cards: S.cards, order: S.order, hidden: S.local, groups: S.groups });
+    $('bk').style.display = 'block';
+  });
+  $('bk_close').addEventListener('click', function () { $('bk').style.display = 'none'; });
+  $('bk_apply').addEventListener('click', function () {
+    try {
+      var o = JSON.parse($('bk_t').value), k;
+      S.layout = defLayout();
+      for (k in (o.layout || {})) { S.layout[k] = o.layout[k]; }
+      S.cards = o.cards || {}; S.order = o.order || {}; S.local = o.hidden || {}; S.groups = o.groups || []; ensureGroups();
+      saveAll(); applyLayout(); render(); $('bk').style.display = 'none';
+    } catch (e) { alert('That doesn\u2019t look like a valid backup.'); }
+  });
+  var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (!S.drag) { render(); } }, 250); });
+  $('c_icon').addEventListener('input', function () { iconSearch('c_icon', 'ic_res'); });
+  $('c_icon2').addEventListener('input', function () { iconSearch('c_icon2', 'ic_res2'); });
+  loadMdi();
+  applyLayout();
+  tick(); setInterval(tick, 10000);
+  S.timer = setInterval(function () { if (!document.hidden) { poll(); } }, POLL_MS);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { poll(); checkUpdate(); if (new Date().getTime() - (S.ghT || 0) > 6 * 3600 * 1000) { checkRepo(); } } });
+  checkUpdate(); setInterval(checkUpdate, 30 * 60 * 1000);
+  checkRepo(); setInterval(checkRepo, 6 * 3600 * 1000);
+  $('ghx').addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); store('ha_gh_skip', $('gh').getAttribute('data-v')); $('gh').style.display = 'none'; });
+  if (!S.token) { openCfg(); } else { poll(); }
+}());
+</script>
+</body>
+</html>
