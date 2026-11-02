@@ -113,16 +113,6 @@ Use the **Backup / Restore** option in Edit Mode to export or import dashboard l
 
 This is useful when moving to another device or browser.
 
-## Troubleshooting
-
-| Problem | Suggested fix |
-|---|---|
-| Connecting indefinitely | Check the Home Assistant address and network connection. |
-| Token rejected | Generate a new Long-Lived Access Token. |
-| Entities missing | Refresh the dashboard and check entity availability. |
-| Old version displayed | Use Reload latest version or clear the browser cache. |
-| Layout reset | Restore a previously saved dashboard backup. |
-
 ## Security
 
 - Use a dedicated non-administrator account.
