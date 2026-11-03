@@ -122,6 +122,12 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
 .modal .evl{font-size:15px;color:var(--text);margin:6px 0}
 .modal .evd{white-space:pre-wrap;font-size:14px;color:var(--text);margin-top:12px}
 #cal .btn{padding:6px 12px;font-size:14px}
+.tile .np{font-size:.82em;margin-top:3px;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile.wide .np,.tile.big .np{white-space:normal}
+.mpbtn{display:block;width:100%;margin-top:8px;border:0;border-radius:8px;background:var(--panel2);color:var(--text);padding:8px 0;font-size:14px;-webkit-appearance:none}
+.tile:not(.on) input[type=range]{background:var(--panel2)}
+.tile:not(.on) input[type=range]::-webkit-slider-thumb{background:var(--text)}
+.tile .ml+input{margin-top:2px}
 </style>
 </head>
 <body>
@@ -228,7 +234,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
 (function () {
   'use strict';
   // Bump this whenever the file is edited. Open copies of the page compare it with the server's copy and offer to update.
-  var BUILD = '2026-11-03i';
+  var BUILD = '2026-11-03j';
   var POLL_MS = 5000;
   // ---- Defaults for every device. Edit these, or use the Edit button on the page for per-device changes. ----
   var CONFIG = {
@@ -257,6 +263,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     lock:           { n: 'Locks',       i: '\uD83D\uDD12', a: 'lock' },
     input_select:   { n: 'Modes',       i: '\uD83D\uDCCB', a: null },
     select:         { n: 'Selectors',   i: '\uD83D\uDCCB', a: null },
+    media_player:   { n: 'Media',       i: '\uD83D\uDCFA', a: null },
     climate:        { n: 'Climate',     i: '\uD83C\uDF21', a: null },
     scene:          { n: 'Scenes',      i: '\uD83C\uDFAC', a: 'scene/turn_on' },
     script:         { n: 'Scripts',     i: '\u25B6\uFE0F', a: 'script/turn_on' },
@@ -265,7 +272,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     sensor:         { n: 'Sensors',     i: '\uD83D\uDCCA', a: null },
     binary_sensor:  { n: 'Status',      i: '\uD83D\uDC41', a: null }
   };
-  var ORDER = ['light','switch','input_boolean','fan','cover','lock','climate','input_select','select','scene','script','button','automation','sensor','binary_sensor'];
+  var ORDER = ['light','switch','input_boolean','fan','cover','lock','climate','media_player','input_select','select','scene','script','button','automation','sensor','binary_sensor'];
 
   function $(id) { return document.getElementById(id); }
   function store(k, v) { try { if (v === undefined) { return localStorage.getItem(k); } localStorage.setItem(k, v); } catch (e) {} return null; }
@@ -329,6 +336,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     var p = service.split('/');
     return api('POST', '/api/services/' + p[0] + '/' + p[1], data).then(function () {
       setTimeout(poll, 500);
+      if (p[0] === 'media_player') { setTimeout(poll, 1800); }
     }).catch(function (e) { setStatus('Command failed: ' + e.message, true); });
   }
 
@@ -360,6 +368,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     if (d === 'cover') { return s.state === 'open'; }
     if (d === 'lock') { return s.state === 'unlocked'; }
     if (d === 'climate') { return s.state !== 'off'; }
+    if (d === 'media_player') { return ['playing', 'paused', 'buffering', 'on'].indexOf(s.state) > -1; }
     return s.state === 'on';
   }
 
@@ -377,6 +386,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     if (S.layout.icons) { t.appendChild(iconNode(iconFor(s))); }
     t.appendChild(el('div', 'nm', nameOf(s)));
     t.appendChild(el('div', 'st', stateText(s)));
+    if (d === 'media_player') { var np = nowPlaying(s); if (np) { t.appendChild(el('div', 'np', np)); } }
     if (S.edit) {
       var hd = isHidden(s.entity_id);
       if (hd) { t.className += ' hid'; }
@@ -415,6 +425,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
       box.lastChild.previousSibling.disabled = true;
       t.appendChild(box);
     }
+    if (d === 'media_player' && s.state !== 'unavailable') { mediaControls(s).forEach(function (n) { t.appendChild(n); }); }
     var mode = cd.modes || 'drop';
     if (mode !== 'off' && s.state !== 'unavailable') {
       var sels = selectsOf(s);
@@ -517,6 +528,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
       add('Preset', a.preset_modes, a.preset_mode, 'climate/set_preset_mode', 'preset_mode');
       add('Fan', a.fan_modes, a.fan_mode, 'climate/set_fan_mode', 'fan_mode');
     }
+    else if (d === 'media_player') { add('Source', a.source_list, a.source, 'media_player/select_source', 'source'); }
     else if (d === 'fan') { add('Preset', a.preset_modes, a.preset_mode, 'fan/set_preset_mode', 'preset_mode'); }
     else if (d === 'light' && s.state === 'on') { add('Effect', a.effect_list, a.effect, 'light/turn_on', 'effect'); }
     return out;
@@ -567,7 +579,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     $('c_wide').value = c.size === 'big' ? '2' : (c.size === 'wide' || c.wide) ? '1' : '0'; $('c_modes').value = c.modes || 'drop';
     $('c_vis').value = isHidden(id) ? '1' : '0';
     fillGroups(groupOf(id));
-    var m = ['input_select', 'select', 'climate', 'fan', 'light'].indexOf(d) > -1;
+    var m = ['input_select', 'select', 'climate', 'fan', 'light', 'media_player'].indexOf(d) > -1;
     $('c_modes').style.display = m ? 'block' : 'none'; $('c_modes_l').style.display = m ? 'block' : 'none';
     var sf = STATEFUL.indexOf(d) > -1;
     $('c_icon2').value = c.iconOff || ''; $('ic_res2').innerHTML = '';
@@ -599,6 +611,56 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     var id = S.editId;
     delete S.cards[id]; delete S.order[id]; delete S.local[id];
     saveAll(); $('ced').style.display = 'none'; render();
+  }
+
+  /* ---------- media players (Google TV, Google Home / Nest speakers, any cast device) ---------- */
+  var MP = { pause: 1, vol: 4, prev: 16, next: 32, on: 128, off: 256, stop: 4096, play: 16384 };   // HA supported_features bits
+  function nowPlaying(s) {
+    var a = s.attributes || {}, parts = [];
+    if (s.state === 'off' || s.state === 'standby' || s.state === 'unavailable') { return ''; }
+    var who = a.media_artist || a.media_series_title || '';
+    if (a.app_name) { parts.push(a.app_name); }
+    if (a.media_title) { parts.push(who ? a.media_title + ' \u2014 ' + who : a.media_title); }
+    return parts.join(' \u00B7 ');
+  }
+  function mpBtn(icon, glyph, title, fn) {
+    var b = el('button', '');
+    if (S.layout.iconset === 'mdi' && S.mdiOk !== false) { b.appendChild(el('i', 'mdi mdi-' + icon)); } else { b.textContent = glyph; }
+    b.title = title;
+    b.addEventListener('click', function (e) { e.stopPropagation(); fn(); });
+    return b;
+  }
+  function mediaControls(s) {
+    var a = s.attributes || {}, f = a.supported_features, st = s.state, out = [], k;
+    function has(bit) { return f === undefined || f === null || (f & bit) !== 0; }
+    function svc(name, data) { var d = { entity_id: s.entity_id }; for (k in (data || {})) { d[k] = data[k]; } call('media_player/' + name, d); }
+    function wide(label, name) {
+      var b = el('button', 'mpbtn', label);
+      b.addEventListener('click', function (e) { e.stopPropagation(); svc(name); });
+      return b;
+    }
+    var active = st === 'playing' || st === 'paused' || st === 'buffering';
+    if (st === 'off' || st === 'standby') { if (has(MP.on)) { out.push(wide('Turn on', 'turn_on')); } return out; }
+    if (active) {
+      var row = el('div', 'stepper');
+      if (has(MP.prev)) { row.appendChild(mpBtn('skip-previous', '\u23EE', 'Previous', function () { svc('media_previous_track'); })); }
+      if (st === 'paused') { if (has(MP.play)) { row.appendChild(mpBtn('play', '\u25B6', 'Play', function () { svc('media_play'); })); } }
+      else if (has(MP.pause)) { row.appendChild(mpBtn('pause', '\u23F8', 'Pause', function () { svc('media_pause'); })); }
+      if (has(MP.next)) { row.appendChild(mpBtn('skip-next', '\u23ED', 'Next', function () { svc('media_next_track'); })); }
+      if (has(MP.stop)) { row.appendChild(mpBtn('stop', '\u23F9', 'Stop', function () { svc('media_stop'); })); }
+      if (row.childNodes.length) { out.push(row); }
+    }
+    if (has(MP.vol) && typeof a.volume_level === 'number') {
+      var r = document.createElement('input');
+      r.type = 'range'; r.min = 0; r.max = 100; r.value = Math.round(a.volume_level * 100);
+      r.addEventListener('click', function (e) { e.stopPropagation(); });
+      r.addEventListener('touchstart', function (e) { e.stopPropagation(); S.drag = true; });
+      r.addEventListener('touchend', function () { S.drag = false; });
+      r.addEventListener('change', function () { S.drag = false; svc('volume_set', { volume_level: parseInt(r.value, 10) / 100 }); });
+      out.push(el('div', 'ml', 'Volume')); out.push(r);
+    }
+    if ((active || a.app_name) && has(MP.off)) { out.push(wide(a.app_name !== undefined ? 'Stop casting' : 'Turn off', 'turn_off')); }
+    return out;
   }
 
   /* ---------- groups ---------- */
@@ -654,10 +716,10 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
   /* ---------- Home Assistant (Material Design) icons ---------- */
   var MDI = { light: 'lightbulb', switch: 'toggle-switch', input_boolean: 'toggle-switch', fan: 'fan', cover: 'window-shutter',
     lock: 'lock', climate: 'thermostat', input_select: 'format-list-bulleted', select: 'format-list-bulleted', scene: 'palette',
-    script: 'script-text-play', button: 'gesture-tap-button', automation: 'robot', sensor: 'chart-line', binary_sensor: 'radiobox-marked' };
+    script: 'script-text-play', media_player: 'cast', button: 'gesture-tap-button', automation: 'robot', sensor: 'chart-line', binary_sensor: 'radiobox-marked' };
   var MDIS = { 'light:off': 'lightbulb-outline', 'lock:unlocked': 'lock-open-variant', 'cover:open': 'window-shutter-open', 'fan:off': 'fan-off',
     'switch:off': 'toggle-switch-off', 'input_boolean:off': 'toggle-switch-off' };
-  var STATEFUL = ['light', 'switch', 'input_boolean', 'fan', 'cover', 'lock', 'climate', 'automation', 'binary_sensor'];
+  var STATEFUL = ['media_player', 'light', 'switch', 'input_boolean', 'fan', 'cover', 'lock', 'climate', 'automation', 'binary_sensor'];
   function iconFor(s) {
     var d = dom(s.entity_id), c = card(s.entity_id), a = s.attributes || {};
     var mdi = S.layout.iconset === 'mdi' && S.mdiOk !== false;
@@ -666,6 +728,11 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
       if (pick.indexOf('mdi:') !== 0) { return pick; }
       if (mdi) { return pick; }
     } else if (mdi && a.icon && String(a.icon).indexOf('mdi:') === 0) { return a.icon; }
+    if (d === 'media_player') {
+      var dc = a.device_class, base = dc === 'tv' ? 'television' : (dc === 'speaker' ? 'speaker' : 'cast');
+      if (mdi) { return 'mdi:' + base + ((s.state === 'off' || s.state === 'standby') ? '-off' : ''); }
+      return dc === 'speaker' ? '\uD83D\uDD0A' : DOM[d].i;
+    }
     if (mdi) { return 'mdi:' + (MDIS[d + ':' + s.state] || MDI[d]); }
     return DOM[d].i;
   }
