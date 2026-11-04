@@ -50,7 +50,8 @@ header{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-align:c
 #editbar p{margin:0 0 8px;font-size:13px;color:var(--muted)}
 #editbar .r{display:-webkit-box;display:-webkit-flex;display:flex}
 #editbar input{-webkit-box-flex:1;-webkit-flex:1;flex:1;min-width:0;font-size:16px;padding:8px 10px;border-radius:8px;border:1px solid #3a4650;background:var(--bg);color:var(--text);-webkit-appearance:none}
-.tile .badge{position:absolute;top:10px;right:10px;font-size:11px;font-weight:600;padding:2px 7px;border-radius:9px;background:rgba(0,0,0,.35);color:#fff}
+.tile .badge{position:absolute;top:6px;right:6px;font-size:12px;font-weight:600;padding:6px 12px;border-radius:14px;background:rgba(0,0,0,.4);color:#fff}
+.tile .badge.on{background:var(--ink);color:var(--on)}
 .tile.hid{opacity:.4;background:var(--panel)}
 .tile.hid.on{background:var(--panel);color:var(--text)}
 .btn.act{background:var(--on);color:var(--ink);font-weight:600}
@@ -145,7 +146,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
 </div>
 <div id="tabs"></div>
 <div id="editbar">
-  <p>Tap a card to rename it, resize it, move it, hide it or change its mode controls. Everything saves on this device.</p>
+  <p>Tap Hidden / Shown on a card to switch it on or off the dashboard. Tap the rest of the card to rename it, resize it, move it or change its mode controls. Everything saves on this device.</p>
   <div class="r"><input id="q" type="search" placeholder="Search entities" autocapitalize="off" autocorrect="off"><button class="btn" id="hideall">Hide all</button><button class="btn" id="showall">Show all</button></div>
   <label class="chk"><input type="checkbox" id="onlyshown"> Only list shown cards</label>
   <div class="lay">
@@ -234,12 +235,15 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
 (function () {
   'use strict';
   // Bump this whenever the file is edited. Open copies of the page compare it with the server's copy and offer to update.
-  var BUILD = '2026-11-03j';
+  var BUILD = '2026-11-03k';
   var POLL_MS = 5000;
   // ---- Defaults for every device. Edit these, or use the Edit button on the page for per-device changes. ----
   var CONFIG = {
-    hiddenDomains:  [],            // e.g. ['automation', 'script']
-    hiddenEntities: [],            // e.g. ['light.garage_strip', 'switch.printer']
+    hideByDefault:  true,          // true: nothing shows until you choose it (keeps backups small). false: everything shows until hidden.
+    shownDomains:   [],            // used when hideByDefault is true, e.g. ['light']
+    shownEntities:  [],            // used when hideByDefault is true, e.g. ['switch.pump']
+    hiddenDomains:  [],            // used when hideByDefault is false, e.g. ['automation', 'script']
+    hiddenEntities: [],            // used when hideByDefault is false, e.g. ['light.garage_strip']
     names:          {},            // e.g. { 'light.lounge_main': 'Lounge' }
     allTabExclude:  [],  // domains always left out of the "All" tab, e.g. ['sensor']. Sensors can also be toggled in Edit mode.
     // Optional: tell me when a newer build exists on GitHub (it never installs anything by itself).
@@ -278,14 +282,30 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
   function store(k, v) { try { if (v === undefined) { return localStorage.getItem(k); } localStorage.setItem(k, v); } catch (e) {} return null; }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) { e.className = cls; } if (text !== undefined) { e.textContent = text; } return e; }
   function dom(id) { return id.split('.')[0]; }
+  function defHidden(id) {
+    var d = dom(id);
+    if (CONFIG.hideByDefault) { return !(CONFIG.shownEntities.indexOf(id) > -1 || CONFIG.shownDomains.indexOf(d) > -1); }
+    return CONFIG.hiddenEntities.indexOf(id) > -1 || CONFIG.hiddenDomains.indexOf(d) > -1;
+  }
   function isHidden(id) {
     if (S.local.hasOwnProperty(id)) { return S.local[id]; }
-    return CONFIG.hiddenEntities.indexOf(id) > -1 || CONFIG.hiddenDomains.indexOf(dom(id)) > -1;
+    return defHidden(id);
   }
   function setHidden(id, hide) {
-    var def = CONFIG.hiddenEntities.indexOf(id) > -1 || CONFIG.hiddenDomains.indexOf(dom(id)) > -1;
-    if (hide === def) { delete S.local[id]; } else { S.local[id] = hide; }
+    if (hide === defHidden(id)) { delete S.local[id]; } else { S.local[id] = hide; }
     store('ha_hidden', JSON.stringify(S.local));
+  }
+  // One-off: people who used the old "show everything" default keep what they were seeing
+  function migrateDefaults() {
+    if (!S.migrate) { return; }
+    S.migrate = false;
+    var old = S.local, nl = {};
+    Object.keys(S.states).forEach(function (id) {
+      if (!DOM[dom(id)]) { return; }
+      var wasHidden = old.hasOwnProperty(id) ? old[id] : (CONFIG.hiddenEntities.indexOf(id) > -1 || CONFIG.hiddenDomains.indexOf(dom(id)) > -1);
+      if (!wasHidden) { nl[id] = false; }
+    });
+    S.local = nl; store('ha_defhid', '1'); saveAll();
   }
   function nameOf(s) { var cn = S.cards[s.entity_id]; if (cn && cn.name) { return cn.name; } if (CONFIG.names[s.entity_id]) { return CONFIG.names[s.entity_id]; } return (s.attributes && s.attributes.friendly_name) || s.entity_id; }
 
@@ -322,6 +342,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
       var m = {};
       for (var i = 0; i < list.length; i++) { m[list[i].entity_id] = list[i]; }
       S.states = m;
+      migrateDefaults();
       S.busy = false;
       setStatus('live');
       render();
@@ -390,7 +411,9 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     if (S.edit) {
       var hd = isHidden(s.entity_id);
       if (hd) { t.className += ' hid'; }
-      t.appendChild(el('div', 'badge', hd ? 'Hidden' : 'Shown'));
+      var bg = el('div', 'badge' + (hd ? '' : ' on'), hd ? 'Hidden' : 'Shown');
+      bg.addEventListener('click', function (e) { e.stopPropagation(); setHidden(s.entity_id, !isHidden(s.entity_id)); render(); });
+      t.appendChild(bg);
       t.addEventListener('click', function () { openCard(s.entity_id); });
       return t;
     }
@@ -485,7 +508,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     });
     var em = $('empty');
     em.style.display = list.length ? 'none' : 'block';
-    em.textContent = list.length ? '' : (S.edit ? 'No matching entities.' : 'Nothing to show. Check your connection in Settings, or tap Edit to unhide items.');
+    em.textContent = list.length ? '' : (S.edit ? 'No matching entities.' : 'Nothing shown yet. Tap Edit, then tap Hidden on the cards you want. (Check Settings if no cards appear in Edit mode.)');
   }
 
   function setEdit(on) {
@@ -564,7 +587,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
   }
 
   function move(id, dir) {
-    var ids = S.shownIds.filter(function (x) { return groupOf(x) === groupOf(id); }), i = ids.indexOf(id), j = i + dir;
+    var ids = S.shownIds.filter(function (x) { return groupOf(x) === groupOf(id) && !isHidden(x); }), i = ids.indexOf(id), j = i + dir;
     if (i < 0 || j < 0 || j >= ids.length) { return; }
     var t = ids[i]; ids[i] = ids[j]; ids[j] = t;
     ids.forEach(function (x, k) { S.order[x] = k * 10; });
@@ -1033,6 +1056,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
   /* ---------- start ---------- */
   S.url = store('ha_url') || '';
   S.token = store('ha_token') || '';
+  if (store('ha_defhid') === null) { if (S.token) { S.migrate = CONFIG.hideByDefault; } else { store('ha_defhid', '1'); } }
   try { S.local = JSON.parse(store('ha_hidden') || '{}') || {}; } catch (e) { S.local = {}; }
   $('edit').addEventListener('click', function () { setEdit(!S.edit); });
   $('onlyshown').addEventListener('change', function () { S.onlyShown = this.checked; render(); });
@@ -1071,7 +1095,11 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
   $('c_up').addEventListener('click', function () { move(S.editId, -1); });
   $('c_dn').addEventListener('click', function () { move(S.editId, 1); });
   $('bkbtn').addEventListener('click', function () {
-    $('bk_t').value = JSON.stringify({ layout: S.layout, cards: S.cards, order: S.order, hidden: S.local, groups: S.groups });
+    $('bk_t').value = JSON.stringify((function () {
+      var show = [], hide = [];
+      Object.keys(S.local).forEach(function (id) { (S.local[id] ? hide : show).push(id); });
+      return { layout: S.layout, cards: S.cards, order: S.order, show: show, hide: hide, groups: S.groups };
+    }()));
     $('bk').style.display = 'block';
   });
   $('bk_close').addEventListener('click', function () { $('bk').style.display = 'none'; });
@@ -1080,7 +1108,13 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
       var o = JSON.parse($('bk_t').value), k;
       S.layout = defLayout();
       for (k in (o.layout || {})) { S.layout[k] = o.layout[k]; }
-      S.cards = o.cards || {}; S.order = o.order || {}; S.local = o.hidden || {}; S.groups = o.groups || []; ensureGroups();
+      S.cards = o.cards || {}; S.order = o.order || {}; S.groups = o.groups || []; ensureGroups();
+      S.local = {};
+      (o.show || []).forEach(function (id) { S.local[id] = false; });
+      (o.hide || []).forEach(function (id) { S.local[id] = true; });
+      if (o.hidden && !o.show && !o.hide) {          // backup from an older build: it only listed hidden cards
+        S.local = o.hidden; S.migrate = CONFIG.hideByDefault; migrateDefaults();
+      }
       saveAll(); applyLayout(); render(); $('bk').style.display = 'none';
     } catch (e) { alert('That doesn\u2019t look like a valid backup.'); }
   });
