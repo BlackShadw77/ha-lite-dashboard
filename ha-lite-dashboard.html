@@ -75,7 +75,6 @@ select{-webkit-appearance:none;appearance:none;width:100%;font-size:15px;padding
 #editbar .r2 .btn{margin:0 8px 0 0}
 .modal select{margin-top:2px}
 .modal textarea{width:100%;height:150px;font:12px/1.3 Menlo,monospace;padding:8px;border-radius:8px;border:1px solid #3a4650;background:var(--bg);color:var(--text);-webkit-appearance:none}
-.modal .mv .btn{margin:12px 8px 0 0}
 #ic_res,#ic_res2{max-height:140px;overflow:auto;-webkit-overflow-scrolling:touch;margin-top:8px}
 #ic_res span,#ic_res2 span{display:inline-block;width:40px;height:40px;line-height:40px;text-align:center;font-size:24px;border-radius:8px;background:var(--panel2);margin:0 6px 6px 0}
 #ic_res small,#ic_res2 small{font-size:13px;color:var(--muted)}
@@ -129,6 +128,11 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
 .tile:not(.on) input[type=range]{background:var(--panel2)}
 .tile:not(.on) input[type=range]::-webkit-slider-thumb{background:var(--text)}
 .tile .ml+input{margin-top:2px}
+.tile,.gh{-webkit-touch-callout:none}
+.gh.ug{color:var(--muted);font-weight:400}
+.tile.dragsrc,.gh.dragsrc{opacity:.25}
+.dragc{position:fixed;left:0;top:0;margin:0;z-index:50;pointer-events:none;opacity:.92;box-shadow:0 8px 20px rgba(0,0,0,.45);-webkit-transform:translate3d(0,0,0)}
+.dmark{position:absolute;z-index:40;display:none;background:var(--on);border-radius:3px;pointer-events:none}
 </style>
 </head>
 <body>
@@ -146,7 +150,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
 </div>
 <div id="tabs"></div>
 <div id="editbar">
-  <p>Tap Hidden / Shown on a card to switch it on or off the dashboard. Tap the rest of the card to rename it, resize it, move it or change its mode controls. Everything saves on this device.</p>
+  <p>Press and hold a card (or a group heading), then drag it where you want it. Tap Hidden / Shown to switch a card on or off the dashboard. Tap the rest of the card to rename it or change its size, group or mode controls. Everything saves on this device.</p>
   <div class="r"><input id="q" type="search" placeholder="Search entities" autocapitalize="off" autocorrect="off"><button class="btn" id="hideall">Hide all</button><button class="btn" id="showall">Show all</button></div>
   <label class="chk"><input type="checkbox" id="onlyshown"> Only list shown cards</label>
   <div class="lay">
@@ -200,7 +204,6 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
   <select id="c_modes"><option value="drop">Dropdown</option><option value="btns">Buttons</option><option value="off">Hidden</option></select>
   <label for="c_vis">Visibility</label>
   <select id="c_vis"><option value="0">Shown</option><option value="1">Hidden</option></select>
-  <div class="mv"><button class="btn" id="c_up">&larr; Earlier</button><button class="btn" id="c_dn">Later &rarr;</button></div>
   <div class="row"><button class="btn" id="c_reset">Reset card</button><button class="btn" id="c_cancel">Cancel</button><button class="btn go" id="c_save">Save</button></div>
 </div></div>
 <div id="calm" class="modal"><div class="box wide">
@@ -235,7 +238,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
 (function () {
   'use strict';
   // Bump this whenever the file is edited. Open copies of the page compare it with the server's copy and offer to update.
-  var BUILD = '2026-11-03k';
+  var BUILD = '2026-11-03l';
   var POLL_MS = 5000;
   // ---- Defaults for every device. Edit these, or use the Edit button on the page for per-device changes. ----
   var CONFIG = {
@@ -411,10 +414,11 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     if (S.edit) {
       var hd = isHidden(s.entity_id);
       if (hd) { t.className += ' hid'; }
+      t.setAttribute('data-id', s.entity_id);
       var bg = el('div', 'badge' + (hd ? '' : ' on'), hd ? 'Hidden' : 'Shown');
-      bg.addEventListener('click', function (e) { e.stopPropagation(); setHidden(s.entity_id, !isHidden(s.entity_id)); render(); });
+      bg.addEventListener('click', function (e) { e.stopPropagation(); if (S.noClick) { return; } setHidden(s.entity_id, !isHidden(s.entity_id)); render(); });
       t.appendChild(bg);
-      t.addEventListener('click', function () { openCard(s.entity_id); });
+      t.addEventListener('click', function () { if (!S.noClick) { openCard(s.entity_id); } });
       return t;
     }
 
@@ -501,6 +505,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     S.groups.forEach(function (g, i) { secs.push({ name: g, items: [] }); gi[g] = i + 1; });
     list.forEach(function (s) { secs[gi[groupOf(s.entity_id)] || 0].items.push(s); });
     var showEmpty = S.edit && !q && S.filter === 'all';
+    if (S.edit && S.groups.length) { grid.appendChild(ungroupedHeader()); }
     secs.forEach(function (sec, si) {
       if (si > 0 && !sec.items.length && !showEmpty) { return; }
       if (si > 0) { grid.appendChild(groupHeader(sec.name, si - 1)); }
@@ -584,14 +589,6 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
       w.appendChild(sl);
     }
     return w;
-  }
-
-  function move(id, dir) {
-    var ids = S.shownIds.filter(function (x) { return groupOf(x) === groupOf(id) && !isHidden(x); }), i = ids.indexOf(id), j = i + dir;
-    if (i < 0 || j < 0 || j >= ids.length) { return; }
-    var t = ids[i]; ids[i] = ids[j]; ids[j] = t;
-    ids.forEach(function (x, k) { S.order[x] = k * 10; });
-    saveAll(); render();
   }
 
   function openCard(id) {
@@ -686,6 +683,142 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     return out;
   }
 
+  /* ---------- drag to reorder (Edit mode only) ----------
+     Nothing moves in the page while you drag: a copy of the card follows your finger (a cheap transform),
+     positions are measured once at pick-up, and a marker shows where it will land. The page is rebuilt once, on drop. */
+  var DR = null;
+  function hasCls(n, c) { return (' ' + n.className + ' ').indexOf(' ' + c + ' ') > -1; }
+  function dragItem(n) {
+    var g = $('grid');
+    while (n && n !== g) { if (n.className && (hasCls(n, 'tile') || hasCls(n, 'gh'))) { return n; } n = n.parentNode; }
+    return null;
+  }
+  function pressStart(target, x, y) {
+    if (!S.edit || DR) { return; }
+    var it = dragItem(target), n = target;
+    if (!it || hasCls(it, 'ug')) { return; }
+    while (n && n !== it) { if (n.tagName === 'BUTTON' || hasCls(n, 'badge')) { return; } n = n.parentNode; }
+    DR = { it: it, kind: hasCls(it, 'gh') ? 'group' : 'card', x0: x, y0: y, x: x, y: y, on: false, dir: 0, raf: 0, tgt: null };
+    DR.timer = setTimeout(dragBegin, 280);
+  }
+  function pressMove(x, y, e) {
+    var d = DR; if (!d) { return; }
+    d.x = x; d.y = y;
+    if (!d.on) { if (Math.abs(x - d.x0) > 10 || Math.abs(y - d.y0) > 10) { clearTimeout(d.timer); DR = null; } return; }
+    if (e && e.cancelable) { e.preventDefault(); }
+    dragUpdate();
+  }
+  function dragBegin() {
+    var d = DR; if (!d) { return; }
+    d.on = true; S.drag = true;
+    var g = $('grid'), kids = g.children, sx = window.pageXOffset, sy = window.pageYOffset, i, r, k, o, cur = '';
+    d.items = [];
+    for (i = 0; i < kids.length; i++) {
+      k = kids[i]; r = k.getBoundingClientRect();
+      o = { el: k, l: r.left + sx, t: r.top + sy, r: r.right + sx, b: r.bottom + sy };
+      if (hasCls(k, 'gh')) { o.hdr = true; o.ug = hasCls(k, 'ug'); o.g = k.getAttribute('data-g') || ''; cur = o.g; }
+      else { o.id = k.getAttribute('data-id'); o.g = cur; }
+      d.items.push(o);
+    }
+    r = g.getBoundingClientRect(); d.gl = r.left + sx; d.gr = r.right + sx;
+    r = d.it.getBoundingClientRect(); d.offX = d.x0 - r.left; d.offY = d.y0 - r.top;
+    var c = d.it.cloneNode(true);
+    c.className += ' dragc'; c.style.width = r.width + 'px'; c.style.height = r.height + 'px';
+    document.body.appendChild(c); d.clone = c;
+    var m = document.createElement('div'); m.className = 'dmark'; document.body.appendChild(m); d.mark = m;
+    d.it.className += ' dragsrc';
+    dragUpdate();
+  }
+  function cardTarget(px, py) {
+    var d = DR, best = null, bd = 1e12, i, o, dx, dy, dist;
+    for (i = 0; i < d.items.length; i++) {
+      o = d.items[i]; if (o.el === d.it) { continue; }
+      dx = px < o.l ? o.l - px : (px > o.r ? px - o.r : 0);
+      dy = py < o.t ? o.t - py : (py > o.b ? py - o.b : 0);
+      dist = dx * dx + dy * dy;
+      if (dist < bd) { bd = dist; best = o; }
+    }
+    if (!best) { return null; }
+    if (best.hdr) { return { g: best.g, start: true, mark: { l: best.l, t: best.b + 2, w: best.r - best.l, h: 4 } }; }
+    var after = px > (best.l + best.r) / 2;
+    return { g: best.g, id: best.id, after: after, mark: { l: after ? best.r + 3 : best.l - 7, t: best.t, w: 4, h: best.b - best.t } };
+  }
+  function groupTarget(py) {
+    var d = DR, blocks = [], i, o, cur = null, me = d.it.getAttribute('data-g');
+    for (i = 0; i < d.items.length; i++) {
+      o = d.items[i];
+      if (o.hdr) { if (o.ug) { cur = null; continue; } cur = { g: o.g, t: o.t, b: o.b }; blocks.push(cur); }
+      else if (cur && o.b > cur.b) { cur.b = o.b; }
+    }
+    blocks = blocks.filter(function (b) { return b.g !== me; });
+    if (!blocks.length) { return null; }
+    var at = null, y, j;
+    for (j = 0; j < blocks.length; j++) { if (py < (blocks[j].t + blocks[j].b) / 2) { at = blocks[j]; break; } }
+    y = at ? at.t - 6 : blocks[blocks.length - 1].b + 4;
+    return { before: at ? at.g : null, mark: { l: d.gl, t: y, w: d.gr - d.gl, h: 4 } };
+  }
+  function dragUpdate() {
+    var d = DR; if (!d || !d.on) { return; }
+    var tr = 'translate3d(' + (d.x - d.offX) + 'px,' + (d.y - d.offY) + 'px,0)';
+    d.clone.style.webkitTransform = tr; d.clone.style.transform = tr;
+    d.dir = d.y < 70 ? -1 : (d.y > window.innerHeight - 70 ? 1 : 0);
+    if (d.dir && !d.raf) { d.raf = requestAnimationFrame(dragScroll); }
+    var px = d.x + window.pageXOffset, py = d.y + window.pageYOffset;
+    d.tgt = d.kind === 'card' ? cardTarget(px, py) : groupTarget(py);
+    var m = d.mark.style, t = d.tgt;
+    if (!t) { m.display = 'none'; return; }
+    m.display = 'block'; m.left = t.mark.l + 'px'; m.top = t.mark.t + 'px'; m.width = t.mark.w + 'px'; m.height = t.mark.h + 'px';
+  }
+  function dragScroll() {
+    var d = DR; if (!d || !d.on) { return; }
+    d.raf = 0;
+    if (!d.dir) { return; }
+    window.scrollBy(0, d.dir * 12);
+    dragUpdate();
+  }
+  function dropCard(d) {
+    var t = d.tgt, id = d.it.getAttribute('data-id'), list = [], i, o;
+    for (i = 0; i < d.items.length; i++) { o = d.items[i]; if (!o.hdr && o.g === t.g && o.id !== id) { list.push(o.id); } }
+    list.splice(t.start ? 0 : list.indexOf(t.id) + (t.after ? 1 : 0), 0, id);
+    var c = S.cards[id] || {};
+    if (t.g) { c.group = t.g; } else { delete c.group; }
+    if (Object.keys(c).length) { S.cards[id] = c; } else { delete S.cards[id]; }
+    var k = 0;                                   // only cards that are on the dashboard get an order number
+    list.forEach(function (x) { if (!isHidden(x)) { S.order[x] = k; k += 10; } });
+    saveAll();
+  }
+  function dropGroup(d) {
+    var g = d.it.getAttribute('data-g'), arr = S.groups.filter(function (x) { return x !== g; });
+    arr.splice(d.tgt.before === null ? arr.length : arr.indexOf(d.tgt.before), 0, g);
+    S.groups = arr; saveAll();
+  }
+  function dragEnd(apply) {
+    var d = DR; DR = null;
+    if (!d) { return; }
+    clearTimeout(d.timer);
+    if (!d.on) { return; }
+    if (d.raf) { cancelAnimationFrame(d.raf); }
+    document.body.removeChild(d.clone); document.body.removeChild(d.mark);
+    S.drag = false; S.noClick = true; setTimeout(function () { S.noClick = false; }, 450);
+    if (apply && d.tgt) { if (d.kind === 'card') { dropCard(d); } else { dropGroup(d); } }
+    render();
+  }
+  function wireDrag() {
+    var g = $('grid');
+    g.addEventListener('touchstart', function (e) {
+      S.lastTouch = new Date().getTime();
+      if (e.touches.length === 1) { pressStart(e.target, e.touches[0].clientX, e.touches[0].clientY); } else { dragEnd(false); }
+    }, false);
+    g.addEventListener('touchmove', function (e) { if (e.touches[0]) { pressMove(e.touches[0].clientX, e.touches[0].clientY, e); } }, { passive: false });
+    g.addEventListener('touchend', function (e) { var on = DR && DR.on; dragEnd(true); if (on && e.cancelable) { e.preventDefault(); } }, false);
+    g.addEventListener('touchcancel', function () { dragEnd(false); }, false);
+    g.addEventListener('mousedown', function (e) {
+      if (e.button === 0 && new Date().getTime() - (S.lastTouch || 0) > 800) { pressStart(e.target, e.clientX, e.clientY); }
+    }, false);
+    document.addEventListener('mousemove', function (e) { pressMove(e.clientX, e.clientY, e); }, false);
+    document.addEventListener('mouseup', function () { dragEnd(true); }, false);
+  }
+
   /* ---------- groups ---------- */
   function ensureGroups() {
     Object.keys(S.cards).forEach(function (id) { var g = S.cards[id].group; if (g && S.groups.indexOf(g) < 0) { S.groups.push(g); } });
@@ -703,19 +836,17 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
   }
   function groupHeader(name, i) {
     var h = el('div', 'gh');
+    h.setAttribute('data-g', name);
     h.appendChild(el('span', 'gn', name));
     if (S.edit) {
-      [['\u2191', function () { moveGroup(i, -1); }], ['\u2193', function () { moveGroup(i, 1); }],
-       ['Rename', function () { renameGroup(name); }], ['Delete', function () { deleteGroup(name); }]].forEach(function (b) {
+      [['Rename', function () { renameGroup(name); }], ['Delete', function () { deleteGroup(name); }]].forEach(function (b) {
         var x = el('button', '', b[0]); x.addEventListener('click', b[1]); h.appendChild(x);
       });
     }
     return h;
   }
-  function moveGroup(i, dir) {
-    var j = i + dir; if (j < 0 || j >= S.groups.length) { return; }
-    var t = S.groups[i]; S.groups[i] = S.groups[j]; S.groups[j] = t;
-    saveAll(); render();
+  function ungroupedHeader() {
+    var h = el('div', 'gh ug'); h.setAttribute('data-g', ''); h.appendChild(el('span', 'gn', 'Ungrouped')); return h;
   }
   function renameGroup(name) {
     var n = prompt('Rename group', name);
@@ -1059,6 +1190,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
   if (store('ha_defhid') === null) { if (S.token) { S.migrate = CONFIG.hideByDefault; } else { store('ha_defhid', '1'); } }
   try { S.local = JSON.parse(store('ha_hidden') || '{}') || {}; } catch (e) { S.local = {}; }
   $('edit').addEventListener('click', function () { setEdit(!S.edit); });
+  wireDrag();
   $('onlyshown').addEventListener('change', function () { S.onlyShown = this.checked; render(); });
   $('q').addEventListener('input', function () { S.q = this.value; render(); });
   $('hideall').addEventListener('click', function () { bulk(true); });
@@ -1092,8 +1224,6 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
   $('c_save').addEventListener('click', saveCard);
   $('c_cancel').addEventListener('click', function () { $('ced').style.display = 'none'; });
   $('c_reset').addEventListener('click', resetCard);
-  $('c_up').addEventListener('click', function () { move(S.editId, -1); });
-  $('c_dn').addEventListener('click', function () { move(S.editId, 1); });
   $('bkbtn').addEventListener('click', function () {
     $('bk_t').value = JSON.stringify((function () {
       var show = [], hide = [];
