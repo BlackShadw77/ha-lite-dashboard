@@ -23,11 +23,11 @@ header{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-align:c
 .tab{display:inline-block;padding:8px 14px;margin-right:8px;border-radius:20px;background:var(--panel);color:var(--muted);font-size:15px}
 .tab.sel{background:var(--text);color:var(--bg)}
 #grid{font-size:16px;align-items:start;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));grid-gap:10px}
-.tile{background:var(--panel);border-radius:14px;padding:12px;min-height:92px;position:relative;-webkit-user-select:none;user-select:none;-webkit-transition:background .2s;transition:background .2s}
+.tile{min-width:0;background:var(--panel);border-radius:14px;padding:12px;min-height:92px;position:relative;-webkit-user-select:none;user-select:none;-webkit-transition:background .2s;transition:background .2s}
 .tile:active{-webkit-transform:scale(.97);transform:scale(.97)}
 .tile .ic{font-size:1.5em;line-height:1}
 .tile .nm{margin-top:8px;font-size:.95em;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tile .st{font-size:.82em;color:var(--muted);margin-top:2px}
+.tile .st{font-size:.82em;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tile.on{background:var(--on);color:var(--ink)}
 .tile.on .st{color:rgba(36,26,5,.7)}
 .tile.off .nm,.tile.off .ic{opacity:.45}
@@ -60,7 +60,7 @@ select{-webkit-appearance:none;appearance:none;width:100%;font-size:15px;padding
 .tile select{border:0;margin-top:6px;font-size:14px;padding:7px 26px 7px 8px;background-color:var(--panel2)}
 .tile.on select{background-color:rgba(36,26,5,.15);color:var(--ink)}
 .tile.wide{grid-column:span 2}
-.tile .ml{font-size:11px;color:var(--muted);margin-top:8px}
+.tile .ml{font-size:11px;color:var(--muted);margin-top:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tile.on .ml{color:rgba(36,26,5,.7)}
 .tile .ml+select{margin-top:2px}
 .chips{margin-top:8px}
@@ -251,7 +251,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 </div></div>
 
 <div id="live" class="modal"><div class="box wide live">
-  <div class="ch"><b id="live_t"></b><button class="btn" id="live_mode">Use stream</button><button class="btn go" id="live_close">Close</button></div>
+  <div class="ch"><b id="live_t"></b><button class="btn" id="live_mode">Use video</button><button class="btn go" id="live_close">Close</button></div>
   <div class="cam" id="live_v"></div>
   <p class="evl" id="live_s"></p>
 </div></div>
@@ -260,7 +260,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 (function () {
   'use strict';
   // Bump this whenever the file is edited. Open copies of the page compare it with the server's copy and offer to update.
-  var BUILD = '2026-11-03o';
+  var BUILD = '2026-11-03p';
   var POLL_MS = 5000;
   // ---- Defaults for every device. Edit these, or use the Edit button on the page for per-device changes. ----
   var CONFIG = {
@@ -515,7 +515,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     box.style.gridColumn = span >= S.cols ? '1 / -1' : 'span ' + span;
     box.appendChild(groupHeader(name));
     var inner = el('div', 'gin'), prev = S.curCols;
-    inner.style.gridTemplateColumns = 'repeat(' + span + ',1fr)';
+    inner.style.gridTemplateColumns = 'repeat(' + span + ',minmax(0,1fr))';
     S.curCols = span;
     items.forEach(function (s) { inner.appendChild(makeTile(s)); S.shownIds.push(s.entity_id); });
     S.curCols = prev;
@@ -766,12 +766,12 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   }
   function liveFail(why) {
     var L = S.live; if (!L) { return; }
-    if (L.mode === 'hls') { L.note = 'Video unavailable (' + why + '). '; startLive('mjpeg'); } else { startLive('snap'); }
+    if (L.mode === 'hls') { L.note = 'Video unavailable (' + why + '). '; startLive(L.tried.mjpeg ? 'snap' : 'mjpeg'); } else { startLive('snap'); }
   }
   function startLive(mode) {
     var L = S.live; if (!L) { return; }
     liveClear();
-    L.mode = mode; L.gen = (L.gen || 0) + 1;
+    L.mode = mode; L.gen = (L.gen || 0) + 1; L.tried = L.tried || {}; L.tried[mode] = true;
     var gen = L.gen, id = L.id, box = $('live_v');
     function alive() { return S.live && S.live.id === id && S.live.gen === gen; }
     $('live_mode').textContent = mode === 'hls' ? 'Use stream' : 'Use video';
@@ -791,9 +791,9 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       });
     } else if (mode === 'mjpeg') {
       var tok = (S.states[id] && S.states[id].attributes && S.states[id].attributes.access_token) || '';
-      if (!tok) { startLive('snap'); return; }
+      if (!tok) { L.note = 'Stream unavailable (no access token). '; startLive(L.tried.hls ? 'snap' : 'hls'); return; }
       var im = document.createElement('img');
-      im.onerror = function () { if (alive()) { L.note = 'Stream unavailable. '; startLive('snap'); } };
+      im.onerror = function () { if (alive()) { L.note = 'Stream unavailable. '; startLive(L.tried.hls ? 'snap' : 'hls'); } };
       im.src = (S.url || '') + '/api/camera_proxy_stream/' + encodeURIComponent(id) + '?token=' + encodeURIComponent(tok);
       box.appendChild(im); L.el = im; liveStatus('Live (stream)');
     } else {
@@ -812,10 +812,10 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   function openLive(id, auto) {
     if (S.live) { if (S.live.id === id) { return; } closeLive(); }
     var st = S.states[id] || { entity_id: id, attributes: {} };
-    S.live = { id: id, mode: 'hls', gen: 0, note: '' };
+    S.live = { id: id, mode: 'mjpeg', gen: 0, note: '', tried: {} };
     $('live_t').textContent = nameOf(st);
     $('live').style.display = 'block';
-    startLive('hls');
+    startLive('mjpeg');
     if (auto && S.layout.camhold > 0) { S.live.to = setTimeout(closeLive, S.layout.camhold * 1000); }
   }
   function closeLive() {
@@ -1496,7 +1496,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   $('edit').addEventListener('click', function () { setEdit(!S.edit); });
   wireDrag();
   $('live_close').addEventListener('click', closeLive);
-  $('live_mode').addEventListener('click', function () { if (S.live) { S.live.note = ''; startLive(S.live.mode === 'hls' ? 'mjpeg' : 'hls'); } });
+  $('live_mode').addEventListener('click', function () { if (S.live) { S.live.note = ''; S.live.tried = {}; startLive(S.live.mode === 'hls' ? 'mjpeg' : 'hls'); } });
   $('live').addEventListener('touchstart', liveTouched, false);
   $('live').addEventListener('mousedown', liveTouched, false);
   $('onlyshown').addEventListener('change', function () { S.onlyShown = this.checked; render(); });
