@@ -22,7 +22,7 @@ header{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-align:c
 #tabs{white-space:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -12px 12px;padding:0 12px}
 .tab{display:inline-block;padding:8px 14px;margin-right:8px;border-radius:20px;background:var(--panel);color:var(--muted);font-size:15px}
 .tab.sel{background:var(--text);color:var(--bg)}
-#grid{font-size:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));grid-gap:10px}
+#grid{font-size:16px;align-items:start;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));grid-gap:10px}
 .tile{background:var(--panel);border-radius:14px;padding:12px;min-height:92px;position:relative;-webkit-user-select:none;user-select:none;-webkit-transition:background .2s;transition:background .2s}
 .tile:active{-webkit-transform:scale(.97);transform:scale(.97)}
 .tile .ic{font-size:1.5em;line-height:1}
@@ -80,11 +80,16 @@ select{-webkit-appearance:none;appearance:none;width:100%;font-size:15px;padding
 #ic_res small,#ic_res2 small{font-size:13px;color:var(--muted)}
 #editbar .chk{display:block;margin-top:10px;font-size:15px}
 #editbar .chk input{width:20px;height:20px;vertical-align:-4px;margin:0 8px 0 0;-webkit-appearance:checkbox}
-.tile.big{grid-column:span 2;grid-row:span 2}
+.tile.big{grid-column:span 2;grid-row:span 2;align-self:stretch}
 .tile.big .ic{font-size:2.6em}
 .tile.big .nm{font-size:1.2em}
 .tile.big .st{font-size:.95em}
-html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-align:center;-webkit-align-items:center;align-items:center;margin-top:10px;padding-bottom:6px;border-bottom:1px solid var(--panel2);font-weight:600;font-size:1.05em}
+.gbox{min-width:0;background:rgba(255,255,255,.035);border:1px solid var(--panel2);border-radius:16px;padding:10px}
+html.light .gbox{background:rgba(0,0,0,.03)}
+.gh{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-align:center;-webkit-align-items:center;align-items:center;margin:0 0 8px;font-weight:600;font-size:1.05em}
+.gh select{width:auto;margin-left:6px;font-size:13px;padding:5px 24px 5px 8px}
+.gin{display:grid;grid-gap:10px}
+.gempty{grid-column:1 / -1;color:var(--muted);font-size:.85em;padding:14px 4px}
 .gh .gn{-webkit-box-flex:1;-webkit-flex:1;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gh button{border:0;border-radius:8px;background:var(--panel2);color:var(--text);font-size:13px;padding:5px 9px;margin-left:6px;-webkit-appearance:none}
 #upd{display:none;background:var(--on);color:var(--ink);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:15px;-webkit-box-align:center;-webkit-align-items:center;align-items:center}
@@ -129,8 +134,9 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
 .tile:not(.on) input[type=range]::-webkit-slider-thumb{background:var(--text)}
 .tile .ml+input{margin-top:2px}
 .tile,.gh{-webkit-touch-callout:none}
-.gh.ug{color:var(--muted);font-weight:400}
-.tile.dragsrc,.gh.dragsrc{opacity:.25}
+.gh{-webkit-user-select:none;user-select:none}
+.tile.dragsrc,.gbox.dragsrc{opacity:.25}
+.gh.dragc{background:var(--panel2);padding:8px 12px;border-radius:12px}
 .dragc{position:fixed;left:0;top:0;margin:0;z-index:50;pointer-events:none;opacity:.92;box-shadow:0 8px 20px rgba(0,0,0,.45);-webkit-transform:translate3d(0,0,0)}
 .dmark{position:absolute;z-index:40;display:none;background:var(--on);border-radius:3px;pointer-events:none}
 </style>
@@ -150,7 +156,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
 </div>
 <div id="tabs"></div>
 <div id="editbar">
-  <p>Press and hold a card (or a group heading), then drag it where you want it. Tap Hidden / Shown to switch a card on or off the dashboard. Tap the rest of the card to rename it or change its size, group or mode controls. Everything saves on this device.</p>
+  <p>Drag a card or a group heading to move it (on a touch screen, press and hold first). Drop a card inside a group to add it, or outside to take it out. Tap Hidden / Shown to switch a card on or off the dashboard. Tap the rest of the card to rename it or change its size, group or mode controls. Everything saves on this device.</p>
   <div class="r"><input id="q" type="search" placeholder="Search entities" autocapitalize="off" autocorrect="off"><button class="btn" id="hideall">Hide all</button><button class="btn" id="showall">Show all</button></div>
   <label class="chk"><input type="checkbox" id="onlyshown"> Only list shown cards</label>
   <div class="lay">
@@ -238,7 +244,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
 (function () {
   'use strict';
   // Bump this whenever the file is edited. Open copies of the page compare it with the server's copy and offer to update.
-  var BUILD = '2026-11-03l';
+  var BUILD = '2026-11-03n';
   var POLL_MS = 5000;
   // ---- Defaults for every device. Edit these, or use the Edit button on the page for per-device changes. ----
   var CONFIG = {
@@ -258,7 +264,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     // To work offline, self-host the @mdi/font package and use e.g. '/local/mdi/css/materialdesignicons.min.css'
     mdiCss:         'https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css'
   };
-  var S = { cals: [], evMain: null, evMonth: {}, calHidden: {}, calInit: false, calDay: '', lastMin: '', mY: 0, mM: 0, mSel: null, groups: [], cards: {}, order: {}, layout: defLayout(), editId: null, dt: null, cols: 1, edit: false, local: {}, shownIds: [], q: '', url: '', token: '', states: {}, filter: 'all', busy: false, timer: null, drag: false };
+  var S = { gcfg: {}, curCols: 1, cals: [], evMain: null, evMonth: {}, calHidden: {}, calInit: false, calDay: '', lastMin: '', mY: 0, mM: 0, mSel: null, groups: [], cards: {}, order: {}, layout: defLayout(), editId: null, dt: null, cols: 1, edit: false, local: {}, shownIds: [], q: '', url: '', token: '', states: {}, filter: 'all', busy: false, timer: null, drag: false };
 
   // domain -> label, icon, how a tap behaves
   var DOM = {
@@ -401,7 +407,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     var t = el('div', 'tile');
     var cd = card(s.entity_id);
     var sz = cd.size || (cd.wide ? 'wide' : '');
-    if (sz && S.cols > 1) { t.className += sz === 'big' ? ' big' : ' wide'; }
+    if (sz && S.curCols > 1) { t.className += sz === 'big' ? ' big' : ' wide'; }
     var toggleable = !!cfg.a;
     var on = isOn(s);
     if (d !== 'scene' && d !== 'script' && d !== 'button' && d !== 'sensor' && d !== 'input_select' && d !== 'select') { t.className += on ? ' on' : ' off'; }
@@ -474,6 +480,31 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     return nameOf(a).toLowerCase() < nameOf(b).toLowerCase() ? -1 : 1;
   }
 
+  // loose cards and group boxes share one ordering; with no saved order, cards come first and groups follow
+  function unitCmp(a, b) {
+    if (a.o !== undefined && b.o !== undefined) { return a.o - b.o; }
+    if (a.o !== undefined) { return -1; }
+    if (b.o !== undefined) { return 1; }
+    if (!a.card !== !b.card) { return a.card ? -1 : 1; }
+    return a.card ? cmp(a.card, b.card) : a.gi - b.gi;
+  }
+  function gwidth(name) { var c = S.gcfg[name]; return c && c.w !== undefined ? c.w : 2; }   // columns; 0 = full row
+  function makeGroupBox(name, items) {
+    var w = gwidth(name), span = w === 0 ? S.cols : Math.min(w, S.cols);
+    var box = el('div', 'gbox');
+    box.setAttribute('data-g', name);
+    box.style.gridColumn = span >= S.cols ? '1 / -1' : 'span ' + span;
+    box.appendChild(groupHeader(name));
+    var inner = el('div', 'gin'), prev = S.curCols;
+    inner.style.gridTemplateColumns = 'repeat(' + span + ',1fr)';
+    S.curCols = span;
+    items.forEach(function (s) { inner.appendChild(makeTile(s)); S.shownIds.push(s.entity_id); });
+    S.curCols = prev;
+    if (!items.length) { inner.appendChild(el('div', 'gempty', S.edit ? 'Empty. Drag cards here.' : '')); }
+    box.appendChild(inner);
+    return box;
+  }
+
   function render() {
     var ids = Object.keys(S.states), vis = [], has = {}, i, q = S.edit ? S.q.toLowerCase() : '';
     for (i = 0; i < ids.length; i++) {
@@ -501,15 +532,17 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     var grid = $('grid'); grid.innerHTML = '';
     S.cols = Math.max(1, Math.floor((grid.clientWidth + 10) / (SIZES[S.layout.size] + 10)));
     S.shownIds = [];
-    var secs = [{ items: [] }], gi = {};
-    S.groups.forEach(function (g, i) { secs.push({ name: g, items: [] }); gi[g] = i + 1; });
-    list.forEach(function (s) { secs[gi[groupOf(s.entity_id)] || 0].items.push(s); });
+    S.curCols = S.cols;
+    var gi = {}, byG = {}, loose = [];
+    S.groups.forEach(function (g, i) { gi[g] = i; byG[g] = []; });
+    list.forEach(function (s) { var g = groupOf(s.entity_id); if (g) { byG[g].push(s); } else { loose.push(s); } });
     var showEmpty = S.edit && !q && S.filter === 'all';
-    if (S.edit && S.groups.length) { grid.appendChild(ungroupedHeader()); }
-    secs.forEach(function (sec, si) {
-      if (si > 0 && !sec.items.length && !showEmpty) { return; }
-      if (si > 0) { grid.appendChild(groupHeader(sec.name, si - 1)); }
-      sec.items.forEach(function (s) { grid.appendChild(makeTile(s)); S.shownIds.push(s.entity_id); });
+    var units = loose.map(function (s) { return { k: s.entity_id, o: S.order[s.entity_id], card: s }; });
+    S.groups.forEach(function (g) { if (byG[g].length || showEmpty) { units.push({ k: 'g:' + g, o: S.order['g:' + g], g: g, gi: gi[g] }); } });
+    units.sort(unitCmp);
+    units.forEach(function (u) {
+      if (u.card) { grid.appendChild(makeTile(u.card)); S.shownIds.push(u.k); }
+      else { grid.appendChild(makeGroupBox(u.g, byG[u.g])); }
     });
     var em = $('empty');
     em.style.display = list.length ? 'none' : 'block';
@@ -531,7 +564,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
   function defLayout() { return { size: 'm', text: 'm', theme: 'dark', accent: 'amber', clock: true, icons: true, iconset: 'mdi', allsens: true, cal: true, wk: 1 }; }
   function card(id) { return S.cards[id] || {}; }
   function loadJ(k, def) { try { return JSON.parse(store(k)) || def; } catch (e) { return def; } }
-  function saveAll() { store('ha_layout', JSON.stringify(S.layout)); store('ha_cards', JSON.stringify(S.cards)); store('ha_order', JSON.stringify(S.order)); store('ha_groups', JSON.stringify(S.groups)); store('ha_hidden', JSON.stringify(S.local)); }
+  function saveAll() { store('ha_layout', JSON.stringify(S.layout)); store('ha_cards', JSON.stringify(S.cards)); store('ha_order', JSON.stringify(S.order)); store('ha_groups', JSON.stringify(S.groups)); store('ha_gcfg', JSON.stringify(S.gcfg)); store('ha_hidden', JSON.stringify(S.local)); }
   function pretty(o) { o = String(o).replace(/_/g, ' '); return o.charAt(0).toUpperCase() + o.slice(1); }
 
   function applyLayout() {
@@ -685,7 +718,8 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
 
   /* ---------- drag to reorder (Edit mode only) ----------
      Nothing moves in the page while you drag: a copy of the card follows your finger (a cheap transform),
-     positions are measured once at pick-up, and a marker shows where it will land. The page is rebuilt once, on drop. */
+     positions are measured once at pick-up, and a marker shows where it will land. The page is rebuilt once, on drop.
+     Touch: press and hold, then drag. Mouse: just click and drag. */
   var DR = null;
   function hasCls(n, c) { return (' ' + n.className + ' ').indexOf(' ' + c + ' ') > -1; }
   function dragItem(n) {
@@ -693,69 +727,84 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     while (n && n !== g) { if (n.className && (hasCls(n, 'tile') || hasCls(n, 'gh'))) { return n; } n = n.parentNode; }
     return null;
   }
-  function pressStart(target, x, y) {
+  function pressStart(target, x, y, mouse) {
     if (!S.edit || DR) { return; }
     var it = dragItem(target), n = target;
-    if (!it || hasCls(it, 'ug')) { return; }
-    while (n && n !== it) { if (n.tagName === 'BUTTON' || hasCls(n, 'badge')) { return; } n = n.parentNode; }
-    DR = { it: it, kind: hasCls(it, 'gh') ? 'group' : 'card', x0: x, y0: y, x: x, y: y, on: false, dir: 0, raf: 0, tgt: null };
-    DR.timer = setTimeout(dragBegin, 280);
+    if (!it) { return; }
+    while (n && n !== it) { if (n.tagName === 'BUTTON' || n.tagName === 'SELECT' || hasCls(n, 'badge')) { return; } n = n.parentNode; }
+    DR = { it: it, kind: hasCls(it, 'gh') ? 'group' : 'card', mouse: !!mouse, x0: x, y0: y, x: x, y: y, on: false, dir: 0, raf: 0, tgt: null };
+    if (!mouse) { DR.timer = setTimeout(dragBegin, 280); }   // finger: press and hold (so scrolling still works). Mouse: just drag.
   }
   function pressMove(x, y, e) {
     var d = DR; if (!d) { return; }
     d.x = x; d.y = y;
-    if (!d.on) { if (Math.abs(x - d.x0) > 10 || Math.abs(y - d.y0) > 10) { clearTimeout(d.timer); DR = null; } return; }
+    if (!d.on) {
+      var moved = Math.max(Math.abs(x - d.x0), Math.abs(y - d.y0));
+      if (d.mouse) { if (moved > 5) { dragBegin(); } else { return; } }
+      else { if (moved > 10) { clearTimeout(d.timer); DR = null; } return; }
+    }
     if (e && e.cancelable) { e.preventDefault(); }
     dragUpdate();
   }
   function dragBegin() {
-    var d = DR; if (!d) { return; }
+    var d = DR; if (!d || d.on) { return; }
     d.on = true; S.drag = true;
-    var g = $('grid'), kids = g.children, sx = window.pageXOffset, sy = window.pageYOffset, i, r, k, o, cur = '';
-    d.items = [];
+    var g = $('grid'), kids = g.children, sx = window.pageXOffset, sy = window.pageYOffset, i, j, r, k, u, tl, hd;
+    d.units = [];
     for (i = 0; i < kids.length; i++) {
       k = kids[i]; r = k.getBoundingClientRect();
-      o = { el: k, l: r.left + sx, t: r.top + sy, r: r.right + sx, b: r.bottom + sy };
-      if (hasCls(k, 'gh')) { o.hdr = true; o.ug = hasCls(k, 'ug'); o.g = k.getAttribute('data-g') || ''; cur = o.g; }
-      else { o.id = k.getAttribute('data-id'); o.g = cur; }
-      d.items.push(o);
+      u = { el: k, l: r.left + sx, t: r.top + sy, r: r.right + sx, b: r.bottom + sy };
+      if (hasCls(k, 'gbox')) {
+        u.box = true; u.g = k.getAttribute('data-g'); u.tiles = [];
+        hd = k.children[0].getBoundingClientRect(); u.hb = hd.bottom + sy;
+        tl = k.children[1].children;
+        for (j = 0; j < tl.length; j++) {
+          if (hasCls(tl[j], 'tile')) { r = tl[j].getBoundingClientRect(); u.tiles.push({ el: tl[j], id: tl[j].getAttribute('data-id'), l: r.left + sx, t: r.top + sy, r: r.right + sx, b: r.bottom + sy }); }
+        }
+      } else { u.id = k.getAttribute('data-id'); }
+      d.units.push(u);
     }
-    r = g.getBoundingClientRect(); d.gl = r.left + sx; d.gr = r.right + sx;
+    d.src = d.kind === 'group' ? d.it.parentNode : d.it;
     r = d.it.getBoundingClientRect(); d.offX = d.x0 - r.left; d.offY = d.y0 - r.top;
     var c = d.it.cloneNode(true);
     c.className += ' dragc'; c.style.width = r.width + 'px'; c.style.height = r.height + 'px';
     document.body.appendChild(c); d.clone = c;
     var m = document.createElement('div'); m.className = 'dmark'; document.body.appendChild(m); d.mark = m;
-    d.it.className += ' dragsrc';
+    d.src.className += ' dragsrc';
     dragUpdate();
   }
-  function cardTarget(px, py) {
-    var d = DR, best = null, bd = 1e12, i, o, dx, dy, dist;
-    for (i = 0; i < d.items.length; i++) {
-      o = d.items[i]; if (o.el === d.it) { continue; }
-      dx = px < o.l ? o.l - px : (px > o.r ? px - o.r : 0);
-      dy = py < o.t ? o.t - py : (py > o.b ? py - o.b : 0);
-      dist = dx * dx + dy * dy;
+  function rectDist(o, px, py) {
+    var dx = px < o.l ? o.l - px : (px > o.r ? px - o.r : 0), dy = py < o.t ? o.t - py : (py > o.b ? py - o.b : 0);
+    return dx * dx + dy * dy;
+  }
+  // nearest card or group box in the main flow; the marker sits on its left or right edge
+  function flowTarget(px, py, skipEl) {
+    var d = DR, best = null, bd = 1e12, i, o, dist;
+    for (i = 0; i < d.units.length; i++) {
+      o = d.units[i]; if (o.el === skipEl) { continue; }
+      dist = rectDist(o, px, py);
       if (dist < bd) { bd = dist; best = o; }
     }
     if (!best) { return null; }
-    if (best.hdr) { return { g: best.g, start: true, mark: { l: best.l, t: best.b + 2, w: best.r - best.l, h: 4 } }; }
     var after = px > (best.l + best.r) / 2;
-    return { g: best.g, id: best.id, after: after, mark: { l: after ? best.r + 3 : best.l - 7, t: best.t, w: 4, h: best.b - best.t } };
+    return { top: true, key: best.box ? 'g:' + best.g : best.id, after: after, mark: { l: after ? best.r + 3 : best.l - 7, t: best.t, w: 4, h: best.b - best.t } };
   }
-  function groupTarget(py) {
-    var d = DR, blocks = [], i, o, cur = null, me = d.it.getAttribute('data-g');
-    for (i = 0; i < d.items.length; i++) {
-      o = d.items[i];
-      if (o.hdr) { if (o.ug) { cur = null; continue; } cur = { g: o.g, t: o.t, b: o.b }; blocks.push(cur); }
-      else if (cur && o.b > cur.b) { cur.b = o.b; }
+  function cardTarget(px, py) {
+    var d = DR, i, j, u, o, best, bd, dist;
+    for (i = 0; i < d.units.length; i++) {
+      u = d.units[i];
+      if (!u.box || px < u.l || px > u.r || py < u.t || py > u.b) { continue; }
+      best = null; bd = 1e12;                                  // the finger is inside this group
+      for (j = 0; j < u.tiles.length; j++) {
+        o = u.tiles[j]; if (o.el === d.it) { continue; }
+        dist = rectDist(o, px, py);
+        if (dist < bd) { bd = dist; best = o; }
+      }
+      if (!best || py <= u.hb) { return { g: u.g, start: true, mark: { l: u.l + 10, t: u.hb + 1, w: u.r - u.l - 20, h: 4 } }; }
+      var after = px > (best.l + best.r) / 2;
+      return { g: u.g, id: best.id, after: after, mark: { l: after ? best.r + 3 : best.l - 7, t: best.t, w: 4, h: best.b - best.t } };
     }
-    blocks = blocks.filter(function (b) { return b.g !== me; });
-    if (!blocks.length) { return null; }
-    var at = null, y, j;
-    for (j = 0; j < blocks.length; j++) { if (py < (blocks[j].t + blocks[j].b) / 2) { at = blocks[j]; break; } }
-    y = at ? at.t - 6 : blocks[blocks.length - 1].b + 4;
-    return { before: at ? at.g : null, mark: { l: d.gl, t: y, w: d.gr - d.gl, h: 4 } };
+    return flowTarget(px, py, d.it);
   }
   function dragUpdate() {
     var d = DR; if (!d || !d.on) { return; }
@@ -764,7 +813,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     d.dir = d.y < 70 ? -1 : (d.y > window.innerHeight - 70 ? 1 : 0);
     if (d.dir && !d.raf) { d.raf = requestAnimationFrame(dragScroll); }
     var px = d.x + window.pageXOffset, py = d.y + window.pageYOffset;
-    d.tgt = d.kind === 'card' ? cardTarget(px, py) : groupTarget(py);
+    d.tgt = d.kind === 'card' ? cardTarget(px, py) : flowTarget(px, py, d.src);
     var m = d.mark.style, t = d.tgt;
     if (!t) { m.display = 'none'; return; }
     m.display = 'block'; m.left = t.mark.l + 'px'; m.top = t.mark.t + 'px'; m.width = t.mark.w + 'px'; m.height = t.mark.h + 'px';
@@ -776,21 +825,44 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     window.scrollBy(0, d.dir * 12);
     dragUpdate();
   }
+  // give every card on the dashboard (and every group) an order number, in the sequence given
+  function setUnitOrder(keys) {
+    var k = 0;
+    keys.forEach(function (key) {
+      if (key.indexOf('g:') !== 0 && isHidden(key)) { return; }
+      S.order[key] = k; k += 10;
+    });
+  }
+  function flowKeys(d, skipKey) {
+    var keys = [];
+    d.units.forEach(function (u) { var key = u.box ? 'g:' + u.g : u.id; if (key !== skipKey) { keys.push(key); } });
+    return keys;
+  }
   function dropCard(d) {
-    var t = d.tgt, id = d.it.getAttribute('data-id'), list = [], i, o;
-    for (i = 0; i < d.items.length; i++) { o = d.items[i]; if (!o.hdr && o.g === t.g && o.id !== id) { list.push(o.id); } }
-    list.splice(t.start ? 0 : list.indexOf(t.id) + (t.after ? 1 : 0), 0, id);
-    var c = S.cards[id] || {};
-    if (t.g) { c.group = t.g; } else { delete c.group; }
+    var t = d.tgt, id = d.it.getAttribute('data-id'), c = S.cards[id] || {}, keys, list, i, k;
+    if (t.top) {
+      keys = flowKeys(d, id);
+      keys.splice(keys.indexOf(t.key) + (t.after ? 1 : 0), 0, id);
+      delete c.group;
+      setUnitOrder(keys);
+    } else {
+      list = [];
+      for (i = 0; i < d.units.length; i++) {
+        if (d.units[i].box && d.units[i].g === t.g) { d.units[i].tiles.forEach(function (x) { if (x.id !== id) { list.push(x.id); } }); }
+      }
+      list.splice(t.start ? 0 : list.indexOf(t.id) + (t.after ? 1 : 0), 0, id);
+      c.group = t.g;
+      k = 0;
+      list.forEach(function (x) { if (!isHidden(x)) { S.order[x] = k; k += 10; } });
+    }
     if (Object.keys(c).length) { S.cards[id] = c; } else { delete S.cards[id]; }
-    var k = 0;                                   // only cards that are on the dashboard get an order number
-    list.forEach(function (x) { if (!isHidden(x)) { S.order[x] = k; k += 10; } });
     saveAll();
   }
   function dropGroup(d) {
-    var g = d.it.getAttribute('data-g'), arr = S.groups.filter(function (x) { return x !== g; });
-    arr.splice(d.tgt.before === null ? arr.length : arr.indexOf(d.tgt.before), 0, g);
-    S.groups = arr; saveAll();
+    var g = d.it.getAttribute('data-g'), keys = flowKeys(d, 'g:' + g);
+    keys.splice(keys.indexOf(d.tgt.key) + (d.tgt.after ? 1 : 0), 0, 'g:' + g);
+    setUnitOrder(keys);
+    saveAll();
   }
   function dragEnd(apply) {
     var d = DR; DR = null;
@@ -807,13 +879,13 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     var g = $('grid');
     g.addEventListener('touchstart', function (e) {
       S.lastTouch = new Date().getTime();
-      if (e.touches.length === 1) { pressStart(e.target, e.touches[0].clientX, e.touches[0].clientY); } else { dragEnd(false); }
+      if (e.touches.length === 1) { pressStart(e.target, e.touches[0].clientX, e.touches[0].clientY, false); } else { dragEnd(false); }
     }, false);
     g.addEventListener('touchmove', function (e) { if (e.touches[0]) { pressMove(e.touches[0].clientX, e.touches[0].clientY, e); } }, { passive: false });
     g.addEventListener('touchend', function (e) { var on = DR && DR.on; dragEnd(true); if (on && e.cancelable) { e.preventDefault(); } }, false);
     g.addEventListener('touchcancel', function () { dragEnd(false); }, false);
     g.addEventListener('mousedown', function (e) {
-      if (e.button === 0 && new Date().getTime() - (S.lastTouch || 0) > 800) { pressStart(e.target, e.clientX, e.clientY); }
+      if (e.button === 0 && new Date().getTime() - (S.lastTouch || 0) > 800) { pressStart(e.target, e.clientX, e.clientY, true); }
     }, false);
     document.addEventListener('mousemove', function (e) { pressMove(e.clientX, e.clientY, e); }, false);
     document.addEventListener('mouseup', function () { dragEnd(true); }, false);
@@ -834,19 +906,23 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     sel.value = cur || '';
     $('c_gnew').value = ''; $('c_gnew').style.display = 'none';
   }
-  function groupHeader(name, i) {
+  function groupHeader(name) {
     var h = el('div', 'gh');
     h.setAttribute('data-g', name);
     h.appendChild(el('span', 'gn', name));
     if (S.edit) {
+      var sl = document.createElement('select');
+      [['1', '1 col'], ['2', '2 cols'], ['3', '3 cols'], ['4', '4 cols'], ['0', 'Full row']].forEach(function (o) {
+        var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; sl.appendChild(op);
+      });
+      sl.value = String(gwidth(name));
+      sl.addEventListener('change', function () { S.gcfg[name] = { w: parseInt(sl.value, 10) }; saveAll(); render(); });
+      h.appendChild(sl);
       [['Rename', function () { renameGroup(name); }], ['Delete', function () { deleteGroup(name); }]].forEach(function (b) {
         var x = el('button', '', b[0]); x.addEventListener('click', b[1]); h.appendChild(x);
       });
     }
     return h;
-  }
-  function ungroupedHeader() {
-    var h = el('div', 'gh ug'); h.setAttribute('data-g', ''); h.appendChild(el('span', 'gn', 'Ungrouped')); return h;
   }
   function renameGroup(name) {
     var n = prompt('Rename group', name);
@@ -855,12 +931,15 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     if (!n || n === name) { return; }
     if (S.groups.indexOf(n) > -1) { alert('A group with that name already exists.'); return; }
     S.groups[S.groups.indexOf(name)] = n;
+    if (S.gcfg[name]) { S.gcfg[n] = S.gcfg[name]; delete S.gcfg[name]; }
+    if (S.order['g:' + name] !== undefined) { S.order['g:' + n] = S.order['g:' + name]; delete S.order['g:' + name]; }
     Object.keys(S.cards).forEach(function (id) { if (S.cards[id].group === name) { S.cards[id].group = n; } });
     saveAll(); render();
   }
   function deleteGroup(name) {
     if (!confirm('Delete the group \u201C' + name + '\u201D? Its cards stay on the dashboard, ungrouped.')) { return; }
     S.groups.splice(S.groups.indexOf(name), 1);
+    delete S.gcfg[name]; delete S.order['g:' + name];
     Object.keys(S.cards).forEach(function (id) {
       if (S.cards[id].group === name) { delete S.cards[id].group; if (!Object.keys(S.cards[id]).length) { delete S.cards[id]; } }
     });
@@ -1212,7 +1291,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
   $('save').addEventListener('click', saveCfg);
   var ly = loadJ('ha_layout', {}), lk;
   for (lk in ly) { if (ly.hasOwnProperty(lk)) { S.layout[lk] = ly[lk]; } }
-  S.cards = loadJ('ha_cards', {}); S.order = loadJ('ha_order', {}); S.groups = loadJ('ha_groups', []); ensureGroups();
+  S.cards = loadJ('ha_cards', {}); S.order = loadJ('ha_order', {}); S.groups = loadJ('ha_groups', []); S.gcfg = loadJ('ha_gcfg', {}); ensureGroups();
   ['size', 'text', 'theme', 'accent', 'clock', 'icons', 'iconset', 'allsens', 'cal', 'wk'].forEach(function (k) {
     $('l_' + k).addEventListener('change', function () {
       S.layout[k] = (k === 'clock' || k === 'icons' || k === 'allsens' || k === 'cal') ? this.value === '1' : (k === 'wk' ? parseInt(this.value, 10) : this.value);
@@ -1228,7 +1307,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
     $('bk_t').value = JSON.stringify((function () {
       var show = [], hide = [];
       Object.keys(S.local).forEach(function (id) { (S.local[id] ? hide : show).push(id); });
-      return { layout: S.layout, cards: S.cards, order: S.order, show: show, hide: hide, groups: S.groups };
+      return { layout: S.layout, cards: S.cards, order: S.order, show: show, hide: hide, groups: S.groups, gcfg: S.gcfg };
     }()));
     $('bk').style.display = 'block';
   });
@@ -1238,7 +1317,7 @@ html .gh{grid-column:1 / -1;display:-webkit-box;display:-webkit-flex;display:fle
       var o = JSON.parse($('bk_t').value), k;
       S.layout = defLayout();
       for (k in (o.layout || {})) { S.layout[k] = o.layout[k]; }
-      S.cards = o.cards || {}; S.order = o.order || {}; S.groups = o.groups || []; ensureGroups();
+      S.cards = o.cards || {}; S.order = o.order || {}; S.groups = o.groups || []; S.gcfg = o.gcfg || {}; ensureGroups();
       S.local = {};
       (o.show || []).forEach(function (id) { S.local[id] = false; });
       (o.hide || []).forEach(function (id) { S.local[id] = true; });
