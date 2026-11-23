@@ -139,6 +139,11 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 .gh.dragc{background:var(--panel2);padding:8px 12px;border-radius:12px}
 .dragc{position:fixed;left:0;top:0;margin:0;z-index:50;pointer-events:none;opacity:.92;box-shadow:0 8px 20px rgba(0,0,0,.45);-webkit-transform:translate3d(0,0,0)}
 .dmark{position:absolute;z-index:40;display:none;background:var(--on);border-radius:3px;pointer-events:none}
+.cam{position:relative;width:100%;padding-top:56.25%;background:#000;border-radius:10px;overflow:hidden}
+.cam img,.cam video{position:absolute;left:0;top:0;width:100%;height:100%;border:0;object-fit:cover}
+#live .cam img,#live .cam video{object-fit:contain}
+.modal .box.live{max-width:980px;margin-top:20px}
+#live .ch .btn{margin-left:8px}
 </style>
 </head>
 <body>
@@ -169,6 +174,9 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     <label>Sensors on All tab<select id="l_allsens"><option value="1">Show</option><option value="0">Hide</option></select></label>
     <label>Calendar<select id="l_cal"><option value="1">Show</option><option value="0">Hide</option></select></label>
     <label>Week starts<select id="l_wk"><option value="1">Monday</option><option value="0">Sunday</option></select></label>
+    <label>Camera refresh<select id="l_camrate"><option value="2">2 seconds</option><option value="5">5 seconds</option><option value="10">10 seconds</option><option value="30">30 seconds</option><option value="0">Off</option></select></label>
+    <label>Auto-open live view<select id="l_camauto"><option value="1">On</option><option value="0">Off</option></select></label>
+    <label>Auto-close after<select id="l_camhold"><option value="20">20 seconds</option><option value="45">45 seconds</option><option value="90">90 seconds</option><option value="0">Stay open</option></select></label>
     <label>Icon style<select id="l_iconset"><option value="mdi">Home Assistant</option><option value="emoji">Emoji</option></select></label>
   </div>
   <div class="r2"><button class="btn" id="bkbtn">Backup / restore</button><button class="btn" id="rstlay">Reset layout</button></div>
@@ -206,6 +214,8 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   <label for="c_group">Group</label>
   <select id="c_group"></select>
   <input id="c_gnew" type="text" maxlength="40" placeholder="New group name" style="display:none;margin-top:8px">
+  <label for="c_trig" id="c_trig_l" style="display:none">Open the live view when this triggers (doorbell, motion)</label>
+  <select id="c_trig" style="display:none"></select>
   <label for="c_modes" id="c_modes_l">Mode controls</label>
   <select id="c_modes"><option value="drop">Dropdown</option><option value="btns">Buttons</option><option value="off">Hidden</option></select>
   <label for="c_vis">Visibility</label>
@@ -240,11 +250,17 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   <div class="row"><button class="btn go" id="cev_close">Close</button></div>
 </div></div>
 
+<div id="live" class="modal"><div class="box wide live">
+  <div class="ch"><b id="live_t"></b><button class="btn" id="live_mode">Use stream</button><button class="btn go" id="live_close">Close</button></div>
+  <div class="cam" id="live_v"></div>
+  <p class="evl" id="live_s"></p>
+</div></div>
+
 <script>
 (function () {
   'use strict';
   // Bump this whenever the file is edited. Open copies of the page compare it with the server's copy and offer to update.
-  var BUILD = '2026-11-03n';
+  var BUILD = '2026-11-03o';
   var POLL_MS = 5000;
   // ---- Defaults for every device. Edit these, or use the Edit button on the page for per-device changes. ----
   var CONFIG = {
@@ -264,7 +280,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     // To work offline, self-host the @mdi/font package and use e.g. '/local/mdi/css/materialdesignicons.min.css'
     mdiCss:         'https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css'
   };
-  var S = { gcfg: {}, curCols: 1, cals: [], evMain: null, evMonth: {}, calHidden: {}, calInit: false, calDay: '', lastMin: '', mY: 0, mM: 0, mSel: null, groups: [], cards: {}, order: {}, layout: defLayout(), editId: null, dt: null, cols: 1, edit: false, local: {}, shownIds: [], q: '', url: '', token: '', states: {}, filter: 'all', busy: false, timer: null, drag: false };
+  var S = { cam: {}, live: null, gcfg: {}, curCols: 1, cals: [], evMain: null, evMonth: {}, calHidden: {}, calInit: false, calDay: '', lastMin: '', mY: 0, mM: 0, mSel: null, groups: [], cards: {}, order: {}, layout: defLayout(), editId: null, dt: null, cols: 1, edit: false, local: {}, shownIds: [], q: '', url: '', token: '', states: {}, filter: 'all', busy: false, timer: null, drag: false };
 
   // domain -> label, icon, how a tap behaves
   var DOM = {
@@ -277,6 +293,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     input_select:   { n: 'Modes',       i: '\uD83D\uDCCB', a: null },
     select:         { n: 'Selectors',   i: '\uD83D\uDCCB', a: null },
     media_player:   { n: 'Media',       i: '\uD83D\uDCFA', a: null },
+    camera:         { n: 'Cameras',     i: '\uD83D\uDCF7', a: null },
     climate:        { n: 'Climate',     i: '\uD83C\uDF21', a: null },
     scene:          { n: 'Scenes',      i: '\uD83C\uDFAC', a: 'scene/turn_on' },
     script:         { n: 'Scripts',     i: '\u25B6\uFE0F', a: 'script/turn_on' },
@@ -285,7 +302,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     sensor:         { n: 'Sensors',     i: '\uD83D\uDCCA', a: null },
     binary_sensor:  { n: 'Status',      i: '\uD83D\uDC41', a: null }
   };
-  var ORDER = ['light','switch','input_boolean','fan','cover','lock','climate','media_player','input_select','select','scene','script','button','automation','sensor','binary_sensor'];
+  var ORDER = ['light','switch','input_boolean','fan','cover','lock','climate','media_player','camera','input_select','select','scene','script','button','automation','sensor','binary_sensor'];
 
   function $(id) { return document.getElementById(id); }
   function store(k, v) { try { if (v === undefined) { return localStorage.getItem(k); } localStorage.setItem(k, v); } catch (e) {} return null; }
@@ -350,8 +367,8 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     api('GET', '/api/states').then(function (list) {
       var m = {};
       for (var i = 0; i < list.length; i++) { m[list[i].entity_id] = list[i]; }
-      S.states = m;
-      migrateDefaults();
+      var prevSt = S.states; S.states = m;
+      migrateDefaults(); camPoll(prevSt, m);
       S.busy = false;
       setStatus('live');
       render();
@@ -406,14 +423,15 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     var d = dom(s.entity_id), cfg = DOM[d], a = s.attributes || {};
     var t = el('div', 'tile');
     var cd = card(s.entity_id);
-    var sz = cd.size || (cd.wide ? 'wide' : '');
-    if (sz && S.curCols > 1) { t.className += sz === 'big' ? ' big' : ' wide'; }
+    var sz = cd.size || (cd.wide ? 'wide' : (d === 'camera' ? 'wide' : ''));
+    if (sz && sz !== 'normal' && S.curCols > 1) { t.className += sz === 'big' ? ' big' : ' wide'; }
     var toggleable = !!cfg.a;
     var on = isOn(s);
-    if (d !== 'scene' && d !== 'script' && d !== 'button' && d !== 'sensor' && d !== 'input_select' && d !== 'select') { t.className += on ? ' on' : ' off'; }
+    if (d !== 'scene' && d !== 'script' && d !== 'button' && d !== 'sensor' && d !== 'input_select' && d !== 'select' && d !== 'camera') { t.className += on ? ' on' : ' off'; }
     if (s.state === 'unavailable') { t.className += ' off'; }
     if (!toggleable) { t.className += ' ro'; }
-    if (S.layout.icons) { t.appendChild(iconNode(iconFor(s))); }
+    if (d === 'camera') { t.appendChild(camBox(s)); }
+    else if (S.layout.icons) { t.appendChild(iconNode(iconFor(s))); }
     t.appendChild(el('div', 'nm', nameOf(s)));
     t.appendChild(el('div', 'st', stateText(s)));
     if (d === 'media_player') { var np = nowPlaying(s); if (np) { t.appendChild(el('div', 'np', np)); } }
@@ -464,6 +482,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       var sels = selectsOf(s);
       sels.forEach(function (x) { t.appendChild(modeControl(s, x, mode, sels.length > 1)); });
     }
+    if (d === 'camera' && s.state !== 'unavailable') { t.addEventListener('click', function () { openLive(s.entity_id, false); }); }
     if (toggleable && s.state !== 'unavailable') {
       t.addEventListener('click', function () { tap(s); });
     }
@@ -561,7 +580,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   /* ---------- layout, modes, card editor ---------- */
   var SIZES = { s: 118, m: 150, l: 200 }, TEXT = { s: 14, m: 16, l: 19 };
   var ACC = { amber: ['#f2b134', '#241a05'], teal: ['#3cc7b0', '#04231e'], blue: ['#5aa9f2', '#04182b'], rose: ['#f0708f', '#2b0613'], green: ['#8bd05a', '#102105'] };
-  function defLayout() { return { size: 'm', text: 'm', theme: 'dark', accent: 'amber', clock: true, icons: true, iconset: 'mdi', allsens: true, cal: true, wk: 1 }; }
+  function defLayout() { return { size: 'm', text: 'm', theme: 'dark', accent: 'amber', clock: true, icons: true, iconset: 'mdi', allsens: true, cal: true, wk: 1, camrate: 5, camauto: true, camhold: 45 }; }
   function card(id) { return S.cards[id] || {}; }
   function loadJ(k, def) { try { return JSON.parse(store(k)) || def; } catch (e) { return def; } }
   function saveAll() { store('ha_layout', JSON.stringify(S.layout)); store('ha_cards', JSON.stringify(S.cards)); store('ha_order', JSON.stringify(S.order)); store('ha_groups', JSON.stringify(S.groups)); store('ha_gcfg', JSON.stringify(S.gcfg)); store('ha_hidden', JSON.stringify(S.local)); }
@@ -576,6 +595,10 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     $('time').parentNode.style.visibility = L.clock ? 'visible' : 'hidden';
     $('l_size').value = L.size; $('l_text').value = L.text; $('l_theme').value = L.theme; $('l_accent').value = L.accent;
     $('l_clock').value = L.clock ? '1' : '0'; $('l_icons').value = L.icons ? '1' : '0'; $('l_iconset').value = L.iconset; $('l_allsens').value = L.allsens ? '1' : '0'; $('l_cal').value = L.cal ? '1' : '0'; $('l_wk').value = String(L.wk);
+    $('l_camrate').value = String(L.camrate); $('l_camauto').value = L.camauto ? '1' : '0'; $('l_camhold').value = String(L.camhold);
+    clearInterval(S.camTimer); S.camTimer = 0;
+    if (L.camrate > 0) { S.camTimer = setInterval(camTick, L.camrate * 1000); }
+    startWs();
     renderCal();
   }
 
@@ -629,9 +652,12 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     S.editId = id;
     $('c_title').textContent = nameOf(s);
     $('c_name').value = c.name || ''; $('c_icon').value = c.icon || '';
-    $('c_wide').value = c.size === 'big' ? '2' : (c.size === 'wide' || c.wide) ? '1' : '0'; $('c_modes').value = c.modes || 'drop';
+    $('c_wide').value = c.size === 'big' ? '2' : (c.size === 'wide' || c.wide || (d === 'camera' && !c.size)) ? '1' : '0'; $('c_modes').value = c.modes || 'drop';
     $('c_vis').value = isHidden(id) ? '1' : '0';
     fillGroups(groupOf(id));
+    var isCam = d === 'camera';
+    $('c_trig').style.display = isCam ? 'block' : 'none'; $('c_trig_l').style.display = isCam ? 'block' : 'none';
+    if (isCam) { fillTrig(c.trig); }
     var m = ['input_select', 'select', 'climate', 'fan', 'light', 'media_player'].indexOf(d) > -1;
     $('c_modes').style.display = m ? 'block' : 'none'; $('c_modes_l').style.display = m ? 'block' : 'none';
     var sf = STATEFUL.indexOf(d) > -1;
@@ -647,7 +673,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     if (ic) { c.icon = ic; }
     var ic2 = $('c_icon2').value.replace(/\s+/g, '');
     if (ic2 && STATEFUL.indexOf(dom(id)) > -1) { c.iconOff = ic2; }
-    if ($('c_wide').value === '1') { c.size = 'wide'; } else if ($('c_wide').value === '2') { c.size = 'big'; }
+    if ($('c_wide').value === '1') { c.size = 'wide'; } else if ($('c_wide').value === '2') { c.size = 'big'; } else if ($('c_wide').value === '0' && dom(id) === 'camera') { c.size = 'normal'; }
     if ($('c_modes').value !== 'drop') { c.modes = $('c_modes').value; }
     var g = $('c_group').value;
     if (g === '__new') {
@@ -656,14 +682,213 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       if (gn) { if (S.groups.indexOf(gn) < 0) { S.groups.push(gn); } g = gn; }
     }
     if (g) { c.group = g; }
+    var tr = $('c_trig').value;
+    if (tr && dom(id) === 'camera') { c.trig = tr; }
     if (Object.keys(c).length) { S.cards[id] = c; } else { delete S.cards[id]; }
     setHidden(id, $('c_vis').value === '1');
-    saveAll(); $('ced').style.display = 'none'; render();
+    saveAll(); $('ced').style.display = 'none'; render(); startWs();
   }
   function resetCard() {
     var id = S.editId;
     delete S.cards[id]; delete S.order[id]; delete S.local[id];
-    saveAll(); $('ced').style.display = 'none'; render();
+    saveAll(); $('ced').style.display = 'none'; render(); startWs();
+  }
+
+  /* ---------- cameras: refreshing snapshots, live view, and automatic pop-up ---------- */
+  var BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+  function wsUrl() { return (S.url || location.origin).replace(/^http/, 'ws') + '/api/websocket'; }
+  function fetchBlob(id, w, cb) {
+    fetch((S.url || '') + '/api/camera_proxy/' + encodeURIComponent(id) + '?width=' + w, { headers: { 'Authorization': 'Bearer ' + S.token }, cache: 'no-store' })
+      .then(function (r) { if (!r.ok) { throw new Error('http'); } return r.blob(); })
+      .then(function (b) { cb(URL.createObjectURL(b)); })
+      .catch(function () { cb(null); });
+  }
+  // the new picture is decoded off-screen first, so the tile never flashes blank
+  function fetchSnap(id) {
+    var c = S.cam[id] || (S.cam[id] = {});
+    if (c.busy) { return; }
+    c.busy = true;
+    fetchBlob(id, card(id).size === 'big' ? 960 : 640, function (u) {
+      c.busy = false;
+      if (!u) { return; }
+      var pre = new Image();
+      pre.onload = function () {
+        var old = c.url, imgs = document.querySelectorAll('img[data-cam="' + id + '"]'), i;
+        c.url = u;
+        for (i = 0; i < imgs.length; i++) { imgs[i].src = u; }
+        if (old) { setTimeout(function () { URL.revokeObjectURL(old); }, 3000); }
+      };
+      pre.onerror = function () { URL.revokeObjectURL(u); };
+      pre.src = u;
+    });
+  }
+  function camBox(s) {
+    var id = s.entity_id, c = S.cam[id] || (S.cam[id] = {}), w = el('div', 'cam'), im = document.createElement('img');
+    im.setAttribute('data-cam', id); im.alt = '';
+    if (c.url) { im.src = c.url; } else { fetchSnap(id); }
+    w.appendChild(im);
+    return w;
+  }
+  function camTick() {
+    if (document.hidden || S.drag) { return; }
+    var imgs = document.querySelectorAll('img[data-cam]'), seen = {}, i, id;
+    for (i = 0; i < imgs.length; i++) {
+      id = imgs[i].getAttribute('data-cam');
+      if (!seen[id]) { seen[id] = 1; if (!(S.live && S.live.id === id)) { fetchSnap(id); } }
+    }
+  }
+
+  /* live view: video first (HLS), then the MJPEG stream, then fast snapshots */
+  function getHls(id, cb) {
+    var ws, done = false, to;
+    function fin(err, url) { if (done) { return; } done = true; clearTimeout(to); try { ws.close(); } catch (e) {} cb(err, url); }
+    try { ws = new WebSocket(wsUrl()); } catch (e) { cb('no websocket'); return; }
+    to = setTimeout(function () { fin('timed out'); }, 8000);
+    ws.onmessage = function (ev) {
+      var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (m.type === 'auth_required') { ws.send(JSON.stringify({ type: 'auth', access_token: S.token })); }
+      else if (m.type === 'auth_ok') { ws.send(JSON.stringify({ id: 1, type: 'camera/stream', entity_id: id })); }
+      else if (m.type === 'auth_invalid') { fin('login refused'); }
+      else if (m.type === 'result' && m.id === 1) { if (m.success && m.result && m.result.url) { fin(null, m.result.url); } else { fin('no video stream'); } }
+    };
+    ws.onerror = function () { fin('connection failed'); };
+    ws.onclose = function () { fin('connection closed'); };
+  }
+  function liveStatus(msg) { var L = S.live; $('live_s').textContent = (L && L.note ? L.note : '') + msg; }
+  function liveClear() {
+    var L = S.live; if (!L) { return; }
+    clearTimeout(L.tmo); clearTimeout(L.snap);
+    if (L.el) {
+      if (L.el.tagName === 'VIDEO') { try { L.el.pause(); } catch (e) {} L.el.removeAttribute('src'); try { L.el.load(); } catch (e2) {} }
+      else { if (L.el.src && L.el.src.indexOf('blob:') === 0) { URL.revokeObjectURL(L.el.src); } L.el.src = BLANK; }
+    }
+    $('live_v').innerHTML = ''; L.el = null;
+  }
+  function liveFail(why) {
+    var L = S.live; if (!L) { return; }
+    if (L.mode === 'hls') { L.note = 'Video unavailable (' + why + '). '; startLive('mjpeg'); } else { startLive('snap'); }
+  }
+  function startLive(mode) {
+    var L = S.live; if (!L) { return; }
+    liveClear();
+    L.mode = mode; L.gen = (L.gen || 0) + 1;
+    var gen = L.gen, id = L.id, box = $('live_v');
+    function alive() { return S.live && S.live.id === id && S.live.gen === gen; }
+    $('live_mode').textContent = mode === 'hls' ? 'Use stream' : 'Use video';
+    liveStatus('Connecting\u2026');
+    if (mode === 'hls') {
+      var v = document.createElement('video');
+      v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.muted = true; v.autoplay = true; v.controls = true;
+      box.appendChild(v); L.el = v;
+      v.addEventListener('playing', function () { if (alive()) { clearTimeout(L.tmo); liveStatus('Live (video)'); } });
+      v.addEventListener('error', function () { if (alive()) { liveFail('video error'); } });
+      L.tmo = setTimeout(function () { if (alive()) { liveFail('timed out'); } }, 12000);
+      getHls(id, function (err, url) {
+        if (!alive()) { return; }
+        if (err) { liveFail(err); return; }
+        v.src = (S.url || '') + url;
+        var pr = v.play(); if (pr && pr.catch) { pr.catch(function () {}); }
+      });
+    } else if (mode === 'mjpeg') {
+      var tok = (S.states[id] && S.states[id].attributes && S.states[id].attributes.access_token) || '';
+      if (!tok) { startLive('snap'); return; }
+      var im = document.createElement('img');
+      im.onerror = function () { if (alive()) { L.note = 'Stream unavailable. '; startLive('snap'); } };
+      im.src = (S.url || '') + '/api/camera_proxy_stream/' + encodeURIComponent(id) + '?token=' + encodeURIComponent(tok);
+      box.appendChild(im); L.el = im; liveStatus('Live (stream)');
+    } else {
+      var sn = document.createElement('img');
+      box.appendChild(sn); L.el = sn;
+      (function loop() {
+        if (!alive()) { return; }
+        fetchBlob(id, 960, function (u) {
+          if (!alive()) { if (u) { URL.revokeObjectURL(u); } return; }
+          if (u) { var old = sn.src; sn.src = u; if (old && old.indexOf('blob:') === 0) { URL.revokeObjectURL(old); } liveStatus('Snapshots, refreshing every second'); }
+          L.snap = setTimeout(loop, 1000);
+        });
+      }());
+    }
+  }
+  function openLive(id, auto) {
+    if (S.live) { if (S.live.id === id) { return; } closeLive(); }
+    var st = S.states[id] || { entity_id: id, attributes: {} };
+    S.live = { id: id, mode: 'hls', gen: 0, note: '' };
+    $('live_t').textContent = nameOf(st);
+    $('live').style.display = 'block';
+    startLive('hls');
+    if (auto && S.layout.camhold > 0) { S.live.to = setTimeout(closeLive, S.layout.camhold * 1000); }
+  }
+  function closeLive() {
+    var L = S.live; if (!L) { return; }
+    clearTimeout(L.to); liveClear();
+    S.live = null; $('live').style.display = 'none'; $('live_s').textContent = '';
+  }
+  function liveTouched() { var L = S.live; if (L && L.to) { clearTimeout(L.to); L.to = 0; } }
+
+  /* doorbell / motion triggers: a quiet WebSocket listens for the chosen entities (a normal login is enough, no admin needed),
+     and the 5-second refresh is a backup that catches anything that stays on or stamps a new time */
+  function watchList() {
+    var out = {};
+    Object.keys(S.cards).forEach(function (id) { var t = S.cards[id].trig; if (t && dom(id) === 'camera') { (out[t] = out[t] || []).push(id); } });
+    return out;
+  }
+  function isTrig(id, oldS, newS) {
+    if (!newS || newS === 'unavailable' || newS === 'unknown') { return false; }
+    if (dom(id) === 'event') { return newS !== oldS; }              // every press stamps a new time
+    return newS === 'on' && oldS !== 'on';
+  }
+  function fireTrig(entity) {
+    if (!S.layout.camauto) { return; }
+    var cams = watchList()[entity], now = new Date().getTime();
+    if (!cams || !cams.length || now - (S.lastTrig || 0) < 8000) { return; }
+    S.lastTrig = now;
+    openLive(cams[0], true);
+  }
+  function camPoll(prev, cur) {
+    if (!S.layout.camauto) { return; }
+    Object.keys(watchList()).forEach(function (e) { if (prev[e] && cur[e] && isTrig(e, prev[e].state, cur[e].state)) { fireTrig(e); } });
+  }
+  function stopWs() { clearTimeout(S.wsRetry); clearInterval(S.wsPing); var w = S.ws; S.ws = null; S.wsSig = ''; if (w) { try { w.close(); } catch (e) {} } }
+  function startWs() {
+    var w = watchList(), ids = Object.keys(w), sig = JSON.stringify(ids) + S.layout.camauto + S.token + S.url;
+    if (S.ws && S.wsSig === sig) { return; }
+    stopWs();
+    if (!ids.length || !S.token || !S.layout.camauto) { return; }
+    var ws, nid = 2;
+    try { ws = new WebSocket(wsUrl()); } catch (e) { return; }
+    S.ws = ws; S.wsSig = sig;
+    ws.onmessage = function (ev) {
+      var raw = ev.data, m, i, hit = false;
+      if (raw.indexOf('state_changed') > -1) {                       // cheap check first, so busy systems cost almost nothing
+        for (i = 0; i < ids.length; i++) { if (raw.indexOf(ids[i]) > -1) { hit = true; break; } }
+        if (!hit) { return; }
+      }
+      try { m = JSON.parse(raw); } catch (e) { return; }
+      if (m.type === 'auth_required') { ws.send(JSON.stringify({ type: 'auth', access_token: S.token })); }
+      else if (m.type === 'auth_ok') {
+        ws.send(JSON.stringify({ id: 1, type: 'subscribe_events', event_type: 'state_changed' }));
+        S.wsPing = setInterval(function () { try { ws.send(JSON.stringify({ id: nid++, type: 'ping' })); } catch (e) {} }, 30000);
+      }
+      else if (m.type === 'event' && m.event && m.event.data) {
+        var d = m.event.data;
+        if (d.new_state && w[d.entity_id] && isTrig(d.entity_id, d.old_state ? d.old_state.state : '', d.new_state.state)) { fireTrig(d.entity_id); }
+      }
+    };
+    ws.onclose = function () {
+      clearInterval(S.wsPing);
+      if (S.ws === ws) { S.ws = null; S.wsSig = ''; S.wsRetry = setTimeout(startWs, 5000); }
+    };
+    ws.onerror = function () { try { ws.close(); } catch (e) {} };
+  }
+  function fillTrig(cur) {
+    var sel = $('c_trig'), o;
+    sel.innerHTML = '';
+    o = document.createElement('option'); o.value = ''; o.textContent = 'None'; sel.appendChild(o);
+    Object.keys(S.states).filter(function (x) { var d = dom(x); return d === 'binary_sensor' || d === 'event' || d === 'input_boolean'; })
+      .sort(function (a, b) { return nameOf(S.states[a]).toLowerCase() < nameOf(S.states[b]).toLowerCase() ? -1 : 1; })
+      .forEach(function (x) { var op = document.createElement('option'); op.value = x; op.textContent = nameOf(S.states[x]) + ' (' + x + ')'; sel.appendChild(op); });
+    sel.value = cur || '';
+    if (cur && sel.value !== cur) { o = document.createElement('option'); o.value = cur; o.textContent = cur; sel.appendChild(o); sel.value = cur; }
   }
 
   /* ---------- media players (Google TV, Google Home / Nest speakers, any cast device) ---------- */
@@ -949,7 +1174,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   /* ---------- Home Assistant (Material Design) icons ---------- */
   var MDI = { light: 'lightbulb', switch: 'toggle-switch', input_boolean: 'toggle-switch', fan: 'fan', cover: 'window-shutter',
     lock: 'lock', climate: 'thermostat', input_select: 'format-list-bulleted', select: 'format-list-bulleted', scene: 'palette',
-    script: 'script-text-play', media_player: 'cast', button: 'gesture-tap-button', automation: 'robot', sensor: 'chart-line', binary_sensor: 'radiobox-marked' };
+    script: 'script-text-play', media_player: 'cast', camera: 'cctv', button: 'gesture-tap-button', automation: 'robot', sensor: 'chart-line', binary_sensor: 'radiobox-marked' };
   var MDIS = { 'light:off': 'lightbulb-outline', 'lock:unlocked': 'lock-open-variant', 'cover:open': 'window-shutter-open', 'fan:off': 'fan-off',
     'switch:off': 'toggle-switch-off', 'input_boolean:off': 'toggle-switch-off' };
   var STATEFUL = ['media_player', 'light', 'switch', 'input_boolean', 'fan', 'cover', 'lock', 'climate', 'automation', 'binary_sensor'];
@@ -1206,7 +1431,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       S.chk = false;
       var m = /var BUILD = '([^']+)'/.exec(t);
       if (!m || m[1] === BUILD) { return; }
-      var open = S.edit || $('cfg').style.display === 'block' || $('ced').style.display === 'block' || $('bk').style.display === 'block' || $('calm').style.display === 'block' || $('cev').style.display === 'block' || $('calsel').style.display === 'block';
+      var open = S.edit || $('cfg').style.display === 'block' || $('ced').style.display === 'block' || $('bk').style.display === 'block' || $('calm').style.display === 'block' || $('cev').style.display === 'block' || $('calsel').style.display === 'block' || $('live').style.display === 'block';
       var tried = null;
       try { tried = sessionStorage.getItem('ha_upd'); } catch (e) {}
       if (!open && tried !== m[1]) {
@@ -1260,7 +1485,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     S.url = $('url').value.replace(/^\s+|\s+$/g, '').replace(/\/+$/, '');
     S.token = $('tok').value.replace(/\s+/g, '');
     store('ha_url', S.url); store('ha_token', S.token);
-    closeCfg(); setStatus('connecting…'); S.busy = false; S.calInit = false; poll();
+    closeCfg(); setStatus('connecting…'); S.busy = false; S.calInit = false; poll(); startWs();
   }
 
   /* ---------- start ---------- */
@@ -1270,6 +1495,10 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   try { S.local = JSON.parse(store('ha_hidden') || '{}') || {}; } catch (e) { S.local = {}; }
   $('edit').addEventListener('click', function () { setEdit(!S.edit); });
   wireDrag();
+  $('live_close').addEventListener('click', closeLive);
+  $('live_mode').addEventListener('click', function () { if (S.live) { S.live.note = ''; startLive(S.live.mode === 'hls' ? 'mjpeg' : 'hls'); } });
+  $('live').addEventListener('touchstart', liveTouched, false);
+  $('live').addEventListener('mousedown', liveTouched, false);
   $('onlyshown').addEventListener('change', function () { S.onlyShown = this.checked; render(); });
   $('q').addEventListener('input', function () { S.q = this.value; render(); });
   $('hideall').addEventListener('click', function () { bulk(true); });
@@ -1292,9 +1521,9 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   var ly = loadJ('ha_layout', {}), lk;
   for (lk in ly) { if (ly.hasOwnProperty(lk)) { S.layout[lk] = ly[lk]; } }
   S.cards = loadJ('ha_cards', {}); S.order = loadJ('ha_order', {}); S.groups = loadJ('ha_groups', []); S.gcfg = loadJ('ha_gcfg', {}); ensureGroups();
-  ['size', 'text', 'theme', 'accent', 'clock', 'icons', 'iconset', 'allsens', 'cal', 'wk'].forEach(function (k) {
+  ['size', 'text', 'theme', 'accent', 'clock', 'icons', 'iconset', 'allsens', 'cal', 'wk', 'camrate', 'camauto', 'camhold'].forEach(function (k) {
     $('l_' + k).addEventListener('change', function () {
-      S.layout[k] = (k === 'clock' || k === 'icons' || k === 'allsens' || k === 'cal') ? this.value === '1' : (k === 'wk' ? parseInt(this.value, 10) : this.value);
+      S.layout[k] = (k === 'clock' || k === 'icons' || k === 'allsens' || k === 'cal' || k === 'camauto') ? this.value === '1' : ((k === 'wk' || k === 'camrate' || k === 'camhold') ? parseInt(this.value, 10) : this.value);
       saveAll(); applyLayout(); render();
     });
   });
