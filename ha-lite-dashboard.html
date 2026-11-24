@@ -144,6 +144,8 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 #live .cam img,#live .cam video{object-fit:contain}
 .modal .box.live{max-width:980px;margin-top:20px}
 #live .ch .btn{margin-left:8px}
+#dim{display:none;position:fixed;left:0;top:0;right:0;bottom:0;z-index:8;background:#000}
+.lay input{display:block;width:100%;min-height:38px;margin-top:3px;font-size:15px}
 </style>
 </head>
 <body>
@@ -177,6 +179,12 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     <label>Camera refresh<select id="l_camrate"><option value="2">2 seconds</option><option value="5">5 seconds</option><option value="10">10 seconds</option><option value="30">30 seconds</option><option value="0">Off</option></select></label>
     <label>Auto-open live view<select id="l_camauto"><option value="1">On</option><option value="0">Off</option></select></label>
     <label>Auto-close after<select id="l_camhold"><option value="20">20 seconds</option><option value="45">45 seconds</option><option value="90">90 seconds</option><option value="0">Stay open</option></select></label>
+    <label>Night dimming<select id="l_dim"><option value="0">Off</option><option value="1">On</option></select></label>
+    <label>Dim level<select id="l_dimlvl"><option value="50">50%</option><option value="70">70%</option><option value="85">85%</option><option value="95">95%</option></select></label>
+    <label>Dim from<input type="time" id="l_dimfrom"></label>
+    <label>Dim until<input type="time" id="l_dimto"></label>
+    <label>Tap to wake for<select id="l_dimwake"><option value="15">15 seconds</option><option value="30">30 seconds</option><option value="60">60 seconds</option></select></label>
+    <label>Also dim when<select id="l_dimEnt"><option value="">Nothing</option></select></label>
     <label>Icon style<select id="l_iconset"><option value="mdi">Home Assistant</option><option value="emoji">Emoji</option></select></label>
   </div>
   <div class="r2"><button class="btn" id="bkbtn">Backup / restore</button><button class="btn" id="rstlay">Reset layout</button></div>
@@ -250,6 +258,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   <div class="row"><button class="btn go" id="cev_close">Close</button></div>
 </div></div>
 
+<div id="dim"></div>
 <div id="live" class="modal"><div class="box wide live">
   <div class="ch"><b id="live_t"></b><button class="btn" id="live_mode">Use video</button><button class="btn go" id="live_close">Close</button></div>
   <div class="cam" id="live_v"></div>
@@ -260,7 +269,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 (function () {
   'use strict';
   // Bump this whenever the file is edited. Open copies of the page compare it with the server's copy and offer to update.
-  var BUILD = '2026-11-03p';
+  var BUILD = '2026-11-03q';
   var POLL_MS = 5000;
   // ---- Defaults for every device. Edit these, or use the Edit button on the page for per-device changes. ----
   var CONFIG = {
@@ -345,7 +354,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     var mk = h + ':' + m;
     if (S.lastMin !== mk) {
       S.lastMin = mk;
-      if (S.cals.length) { if (S.calDay && S.calDay !== dkey(sod(d))) { refreshMain(); } else { renderCal(); } }
+      if (S.cals.length) { if (S.calDay && S.calDay !== dkey(sod(d))) { refreshMain(); } else if (!S.dimOn) { renderCal(); } }
     }
   }
 
@@ -371,7 +380,8 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       migrateDefaults(); camPoll(prevSt, m);
       S.busy = false;
       setStatus('live');
-      render();
+      if (!S.dimOn) { render(); }
+      dimCheck();
       if (!S.calInit) { S.calInit = true; loadCals(); }
     }).catch(function (e) {
       S.busy = false;
@@ -574,13 +584,15 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     $('edit').textContent = on ? 'Done' : 'Edit';
     $('edit').className = on ? 'btn act' : 'btn';
     render(); renderCal();
+    if (on) { fillDimEnt(); }
+    dimCheck();
   }
   function bulk(hide) { S.shownIds.forEach(function (id) { setHidden(id, hide); }); render(); }
 
   /* ---------- layout, modes, card editor ---------- */
   var SIZES = { s: 118, m: 150, l: 200 }, TEXT = { s: 14, m: 16, l: 19 };
   var ACC = { amber: ['#f2b134', '#241a05'], teal: ['#3cc7b0', '#04231e'], blue: ['#5aa9f2', '#04182b'], rose: ['#f0708f', '#2b0613'], green: ['#8bd05a', '#102105'] };
-  function defLayout() { return { size: 'm', text: 'm', theme: 'dark', accent: 'amber', clock: true, icons: true, iconset: 'mdi', allsens: true, cal: true, wk: 1, camrate: 5, camauto: true, camhold: 45 }; }
+  function defLayout() { return { size: 'm', text: 'm', theme: 'dark', accent: 'amber', clock: true, icons: true, iconset: 'mdi', allsens: true, cal: true, wk: 1, camrate: 5, camauto: true, camhold: 45, dim: false, dimfrom: '22:00', dimto: '06:30', dimlvl: 85, dimwake: 30, dimEnt: '' }; }
   function card(id) { return S.cards[id] || {}; }
   function loadJ(k, def) { try { return JSON.parse(store(k)) || def; } catch (e) { return def; } }
   function saveAll() { store('ha_layout', JSON.stringify(S.layout)); store('ha_cards', JSON.stringify(S.cards)); store('ha_order', JSON.stringify(S.order)); store('ha_groups', JSON.stringify(S.groups)); store('ha_gcfg', JSON.stringify(S.gcfg)); store('ha_hidden', JSON.stringify(S.local)); }
@@ -596,6 +608,9 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     $('l_size').value = L.size; $('l_text').value = L.text; $('l_theme').value = L.theme; $('l_accent').value = L.accent;
     $('l_clock').value = L.clock ? '1' : '0'; $('l_icons').value = L.icons ? '1' : '0'; $('l_iconset').value = L.iconset; $('l_allsens').value = L.allsens ? '1' : '0'; $('l_cal').value = L.cal ? '1' : '0'; $('l_wk').value = String(L.wk);
     $('l_camrate').value = String(L.camrate); $('l_camauto').value = L.camauto ? '1' : '0'; $('l_camhold').value = String(L.camhold);
+    $('l_dim').value = L.dim ? '1' : '0'; $('l_dimlvl').value = String(L.dimlvl); $('l_dimwake').value = String(L.dimwake);
+    $('l_dimfrom').value = L.dimfrom || ''; $('l_dimto').value = L.dimto || ''; $('l_dimEnt').value = L.dimEnt || '';
+    dimCheck();
     clearInterval(S.camTimer); S.camTimer = 0;
     if (L.camrate > 0) { S.camTimer = setInterval(camTick, L.camrate * 1000); }
     startWs();
@@ -694,6 +709,46 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     saveAll(); $('ced').style.display = 'none'; render(); startWs();
   }
 
+  /* ---------- night dimming ----------
+     A web page can't change the iPad's real brightness, so this lays a dark layer over the page. While it is on the page
+     also stops redrawing and refreshing camera pictures. Tap the screen to wake it for a while. */
+  function mins(t) { var m = /^(\d{1,2}):(\d{2})/.exec(t || ''); return m ? (+m[1]) * 60 + (+m[2]) : -1; }
+  function dimWanted() {
+    var L = S.layout, d = new Date(), now = d.getHours() * 60 + d.getMinutes(), w = false;
+    if (!L.dim) { return false; }
+    var a = mins(L.dimfrom), b = mins(L.dimto);
+    if (a >= 0 && b >= 0 && a !== b) { w = a < b ? (now >= a && now < b) : (now >= a || now < b); }     // handles overnight, e.g. 22:00 to 06:30
+    if (L.dimEnt && S.states[L.dimEnt]) { var st = S.states[L.dimEnt].state; if (st === 'on' || st === 'below_horizon') { w = true; } }
+    return w;
+  }
+  function dimCheck() {
+    var now = new Date().getTime(), want = dimWanted(), awake = (S.dimWake || 0) > now;
+    var show = want && !awake && !S.edit && !S.live, el = $('dim');
+    clearTimeout(S.dimT);
+    if (want && awake) { S.dimT = setTimeout(dimCheck, S.dimWake - now + 100); }
+    if (show) { el.style.opacity = String(S.layout.dimlvl / 100); el.style.display = 'block'; } else { el.style.display = 'none'; }
+    if (S.dimOn && !show) { S.dimOn = false; render(); renderCal(); camTick(); } else { S.dimOn = show; }
+  }
+  function dimWakeUp(e) {
+    if (e && e.cancelable) { e.preventDefault(); }                 // the wake-up tap must not press a card underneath
+    S.dimWake = new Date().getTime() + S.layout.dimwake * 1000;
+    dimCheck();
+  }
+  function dimTouched() {                                          // any touch while awake keeps it awake a bit longer
+    var now = new Date().getTime();
+    if ((S.dimWake || 0) > now) { S.dimWake = now + S.layout.dimwake * 1000; }
+  }
+  function fillDimEnt() {
+    var sel = $('l_dimEnt'), cur = S.layout.dimEnt || '', o;
+    sel.innerHTML = '';
+    o = document.createElement('option'); o.value = ''; o.textContent = 'Nothing'; sel.appendChild(o);
+    Object.keys(S.states).filter(function (x) { var d = dom(x); return d === 'input_boolean' || d === 'binary_sensor' || d === 'sun' || d === 'schedule'; })
+      .sort(function (a, b) { return nameOf(S.states[a]).toLowerCase() < nameOf(S.states[b]).toLowerCase() ? -1 : 1; })
+      .forEach(function (x) { var op = document.createElement('option'); op.value = x; op.textContent = nameOf(S.states[x]) + ' (' + x + ')'; sel.appendChild(op); });
+    sel.value = cur;
+    if (cur && sel.value !== cur) { o = document.createElement('option'); o.value = cur; o.textContent = cur; sel.appendChild(o); sel.value = cur; }
+  }
+
   /* ---------- cameras: refreshing snapshots, live view, and automatic pop-up ---------- */
   var BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
   function wsUrl() { return (S.url || location.origin).replace(/^http/, 'ws') + '/api/websocket'; }
@@ -730,7 +785,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     return w;
   }
   function camTick() {
-    if (document.hidden || S.drag) { return; }
+    if (document.hidden || S.drag || S.dimOn) { return; }
     var imgs = document.querySelectorAll('img[data-cam]'), seen = {}, i, id;
     for (i = 0; i < imgs.length; i++) {
       id = imgs[i].getAttribute('data-cam');
@@ -815,6 +870,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     S.live = { id: id, mode: 'mjpeg', gen: 0, note: '', tried: {} };
     $('live_t').textContent = nameOf(st);
     $('live').style.display = 'block';
+    if (auto) { S.dimWake = new Date().getTime() + S.layout.dimwake * 1000; }     // a doorbell wakes a dimmed screen
     startLive('mjpeg');
     if (auto && S.layout.camhold > 0) { S.live.to = setTimeout(closeLive, S.layout.camhold * 1000); }
   }
@@ -822,6 +878,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     var L = S.live; if (!L) { return; }
     clearTimeout(L.to); liveClear();
     S.live = null; $('live').style.display = 'none'; $('live_s').textContent = '';
+    dimCheck();
   }
   function liveTouched() { var L = S.live; if (L && L.to) { clearTimeout(L.to); L.to = 0; } }
 
@@ -1521,9 +1578,9 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   var ly = loadJ('ha_layout', {}), lk;
   for (lk in ly) { if (ly.hasOwnProperty(lk)) { S.layout[lk] = ly[lk]; } }
   S.cards = loadJ('ha_cards', {}); S.order = loadJ('ha_order', {}); S.groups = loadJ('ha_groups', []); S.gcfg = loadJ('ha_gcfg', {}); ensureGroups();
-  ['size', 'text', 'theme', 'accent', 'clock', 'icons', 'iconset', 'allsens', 'cal', 'wk', 'camrate', 'camauto', 'camhold'].forEach(function (k) {
+  ['size', 'text', 'theme', 'accent', 'clock', 'icons', 'iconset', 'allsens', 'cal', 'wk', 'camrate', 'camauto', 'camhold', 'dim', 'dimfrom', 'dimto', 'dimlvl', 'dimwake', 'dimEnt'].forEach(function (k) {
     $('l_' + k).addEventListener('change', function () {
-      S.layout[k] = (k === 'clock' || k === 'icons' || k === 'allsens' || k === 'cal' || k === 'camauto') ? this.value === '1' : ((k === 'wk' || k === 'camrate' || k === 'camhold') ? parseInt(this.value, 10) : this.value);
+      S.layout[k] = (k === 'clock' || k === 'icons' || k === 'allsens' || k === 'cal' || k === 'camauto' || k === 'dim') ? this.value === '1' : ((k === 'wk' || k === 'camrate' || k === 'camhold' || k === 'dimlvl' || k === 'dimwake') ? parseInt(this.value, 10) : this.value);
       saveAll(); applyLayout(); render();
     });
   });
@@ -1561,6 +1618,11 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   $('c_icon2').addEventListener('input', function () { iconSearch('c_icon2', 'ic_res2'); });
   loadMdi();
   applyLayout();
+  $('dim').addEventListener('touchstart', dimWakeUp, false);
+  $('dim').addEventListener('mousedown', dimWakeUp, false);
+  document.addEventListener('touchstart', dimTouched, true);
+  document.addEventListener('mousedown', dimTouched, true);
+  setInterval(dimCheck, 15000);
   tick(); setInterval(tick, 10000);
   S.timer = setInterval(function () { if (!document.hidden) { poll(); } }, POLL_MS);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) { poll(); checkUpdate(); if (new Date().getTime() - (S.ghT || 0) > 6 * 3600 * 1000) { checkRepo(); } } });
