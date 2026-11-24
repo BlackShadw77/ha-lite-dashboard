@@ -146,6 +146,14 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 #live .ch .btn{margin-left:8px}
 #dim{display:none;position:fixed;left:0;top:0;right:0;bottom:0;z-index:8;background:#000}
 .lay input{display:block;width:100%;min-height:38px;margin-top:3px;font-size:15px}
+.sec{border-top:1px solid var(--panel2);margin-top:8px}
+.sec>summary{list-style:none;padding:11px 2px;font-size:15px;font-weight:600;outline:none;-webkit-user-select:none}
+.sec>summary::-webkit-details-marker{display:none}
+.sec>summary:before{content:'\25B8';display:inline-block;width:18px;color:var(--muted)}
+.sec[open]>summary:before{content:'\25BE'}
+.sec>summary small{font-weight:400;font-size:12px;color:var(--muted);margin-left:6px}
+.sec>.lay,.sec>.r2{margin-top:2px;margin-bottom:6px}
+.sec>.r{margin-top:2px}
 </style>
 </head>
 <body>
@@ -163,31 +171,59 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 </div>
 <div id="tabs"></div>
 <div id="editbar">
-  <p>Drag a card or a group heading to move it (on a touch screen, press and hold first). Drop a card inside a group to add it, or outside to take it out. Tap Hidden / Shown to switch a card on or off the dashboard. Tap the rest of the card to rename it or change its size, group or mode controls. Everything saves on this device.</p>
-  <div class="r"><input id="q" type="search" placeholder="Search entities" autocapitalize="off" autocorrect="off"><button class="btn" id="hideall">Hide all</button><button class="btn" id="showall">Show all</button></div>
-  <label class="chk"><input type="checkbox" id="onlyshown"> Only list shown cards</label>
-  <div class="lay">
-    <label>Card size<select id="l_size"><option value="s">Small</option><option value="m">Medium</option><option value="l">Large</option></select></label>
-    <label>Text size<select id="l_text"><option value="s">Small</option><option value="m">Medium</option><option value="l">Large</option></select></label>
-    <label>Theme<select id="l_theme"><option value="dark">Dark</option><option value="light">Light</option></select></label>
-    <label>Accent<select id="l_accent"><option value="amber">Amber</option><option value="teal">Teal</option><option value="blue">Blue</option><option value="rose">Rose</option><option value="green">Green</option></select></label>
-    <label>Clock<select id="l_clock"><option value="1">Show</option><option value="0">Hide</option></select></label>
-    <label>Card icons<select id="l_icons"><option value="1">Show</option><option value="0">Hide</option></select></label>
-    <label>Sensors on All tab<select id="l_allsens"><option value="1">Show</option><option value="0">Hide</option></select></label>
-    <label>Calendar<select id="l_cal"><option value="1">Show</option><option value="0">Hide</option></select></label>
-    <label>Week starts<select id="l_wk"><option value="1">Monday</option><option value="0">Sunday</option></select></label>
-    <label>Camera refresh<select id="l_camrate"><option value="2">2 seconds</option><option value="5">5 seconds</option><option value="10">10 seconds</option><option value="30">30 seconds</option><option value="0">Off</option></select></label>
-    <label>Auto-open live view<select id="l_camauto"><option value="1">On</option><option value="0">Off</option></select></label>
-    <label>Auto-close after<select id="l_camhold"><option value="20">20 seconds</option><option value="45">45 seconds</option><option value="90">90 seconds</option><option value="0">Stay open</option></select></label>
-    <label>Night dimming<select id="l_dim"><option value="0">Off</option><option value="1">On</option></select></label>
-    <label>Dim level<select id="l_dimlvl"><option value="50">50%</option><option value="70">70%</option><option value="85">85%</option><option value="95">95%</option></select></label>
-    <label>Dim from<input type="time" id="l_dimfrom"></label>
-    <label>Dim until<input type="time" id="l_dimto"></label>
-    <label>Tap to wake for<select id="l_dimwake"><option value="15">15 seconds</option><option value="30">30 seconds</option><option value="60">60 seconds</option></select></label>
-    <label>Also dim when<select id="l_dimEnt"><option value="">Nothing</option></select></label>
-    <label>Icon style<select id="l_iconset"><option value="mdi">Home Assistant</option><option value="emoji">Emoji</option></select></label>
-  </div>
-  <div class="r2"><button class="btn" id="bkbtn">Backup / restore</button><button class="btn" id="rstlay">Reset layout</button></div>
+  <p>Drag a card or group heading to move it (on a touch screen, press and hold first). Tap Hidden / Shown to add or remove a card, and tap the rest of a card for its settings. Everything saves on this device.</p>
+  <details class="sec" open>
+    <summary>Cards <small>search, show and hide</small></summary>
+    <div class="r"><input id="q" type="search" placeholder="Search entities" autocapitalize="off" autocorrect="off"><button class="btn" id="hideall">Hide all</button><button class="btn" id="showall">Show all</button></div>
+    <label class="chk"><input type="checkbox" id="onlyshown"> Only list shown cards</label>
+    <div class="lay">
+      <label>Sensors on All tab<select id="l_allsens"><option value="1">Show</option><option value="0">Hide</option></select></label>
+    </div>
+  </details>
+  <details class="sec">
+    <summary>Appearance <small>size, theme, icons</small></summary>
+    <div class="lay">
+      <label>Card size<select id="l_size"><option value="s">Small</option><option value="m">Medium</option><option value="l">Large</option></select></label>
+      <label>Text size<select id="l_text"><option value="s">Small</option><option value="m">Medium</option><option value="l">Large</option></select></label>
+      <label>Theme<select id="l_theme"><option value="dark">Dark</option><option value="light">Light</option></select></label>
+      <label>Accent<select id="l_accent"><option value="amber">Amber</option><option value="teal">Teal</option><option value="blue">Blue</option><option value="rose">Rose</option><option value="green">Green</option></select></label>
+      <label>Icon style<select id="l_iconset"><option value="mdi">Home Assistant</option><option value="emoji">Emoji</option></select></label>
+      <label>Card icons<select id="l_icons"><option value="1">Show</option><option value="0">Hide</option></select></label>
+      <label>Clock<select id="l_clock"><option value="1">Show</option><option value="0">Hide</option></select></label>
+    </div>
+  </details>
+  <details class="sec">
+    <summary>Calendar</summary>
+    <div class="lay">
+      <label>Calendar<select id="l_cal"><option value="1">Show</option><option value="0">Hide</option></select></label>
+      <label>Week starts<select id="l_wk"><option value="1">Monday</option><option value="0">Sunday</option></select></label>
+    </div>
+  </details>
+  <details class="sec">
+    <summary>Cameras <small>pictures and live view</small></summary>
+    <div class="lay">
+      <label>Picture refresh<select id="l_camrate"><option value="2">2 seconds</option><option value="5">5 seconds</option><option value="10">10 seconds</option><option value="30">30 seconds</option><option value="0">Off</option></select></label>
+      <label>Auto-open live view<select id="l_camauto"><option value="1">On</option><option value="0">Off</option></select></label>
+      <label>Auto-close after<select id="l_camhold"><option value="20">20 seconds</option><option value="45">45 seconds</option><option value="90">90 seconds</option><option value="0">Stay open</option></select></label>
+    </div>
+  </details>
+  <details class="sec">
+    <summary>Night dimming <small>schedule and wake-up</small></summary>
+    <p>Dims the page with a dark layer. Tapping the screen wakes it for a while.</p>
+    <div class="lay">
+      <label>Night dimming<select id="l_dim"><option value="0">Off</option><option value="1">On</option></select></label>
+      <label>Dim level<select id="l_dimlvl"><option value="50">50%</option><option value="70">70%</option><option value="85">85%</option><option value="95">95%</option></select></label>
+      <label>Dim from<input type="time" id="l_dimfrom"></label>
+      <label>Dim until<input type="time" id="l_dimto"></label>
+      <label>Wake for<select id="l_dimwake"><option value="15">15 seconds</option><option value="30">30 seconds</option><option value="60">60 seconds</option></select></label>
+      <label>Also dim when<select id="l_dimEnt"><option value="">Nothing</option></select></label>
+      <label>Wake on motion<select id="l_wakeEnt"><option value="">Nothing</option></select></label>
+    </div>
+  </details>
+  <details class="sec">
+    <summary>Backup and reset</summary>
+    <div class="r2"><button class="btn" id="bkbtn">Backup / restore</button><button class="btn" id="rstlay">Reset layout</button></div>
+  </details>
 </div>
 <div id="grid"></div>
 <div id="empty" style="display:none"></div>
@@ -269,7 +305,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 (function () {
   'use strict';
   // Bump this whenever the file is edited. Open copies of the page compare it with the server's copy and offer to update.
-  var BUILD = '2026-11-03q';
+  var BUILD = '2026-11-03s';
   var POLL_MS = 5000;
   // ---- Defaults for every device. Edit these, or use the Edit button on the page for per-device changes. ----
   var CONFIG = {
@@ -592,7 +628,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   /* ---------- layout, modes, card editor ---------- */
   var SIZES = { s: 118, m: 150, l: 200 }, TEXT = { s: 14, m: 16, l: 19 };
   var ACC = { amber: ['#f2b134', '#241a05'], teal: ['#3cc7b0', '#04231e'], blue: ['#5aa9f2', '#04182b'], rose: ['#f0708f', '#2b0613'], green: ['#8bd05a', '#102105'] };
-  function defLayout() { return { size: 'm', text: 'm', theme: 'dark', accent: 'amber', clock: true, icons: true, iconset: 'mdi', allsens: true, cal: true, wk: 1, camrate: 5, camauto: true, camhold: 45, dim: false, dimfrom: '22:00', dimto: '06:30', dimlvl: 85, dimwake: 30, dimEnt: '' }; }
+  function defLayout() { return { size: 'm', text: 'm', theme: 'dark', accent: 'amber', clock: true, icons: true, iconset: 'mdi', allsens: true, cal: true, wk: 1, camrate: 5, camauto: true, camhold: 45, dim: false, dimfrom: '22:00', dimto: '06:30', dimlvl: 85, dimwake: 30, dimEnt: '', wakeEnt: '' }; }
   function card(id) { return S.cards[id] || {}; }
   function loadJ(k, def) { try { return JSON.parse(store(k)) || def; } catch (e) { return def; } }
   function saveAll() { store('ha_layout', JSON.stringify(S.layout)); store('ha_cards', JSON.stringify(S.cards)); store('ha_order', JSON.stringify(S.order)); store('ha_groups', JSON.stringify(S.groups)); store('ha_gcfg', JSON.stringify(S.gcfg)); store('ha_hidden', JSON.stringify(S.local)); }
@@ -609,7 +645,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     $('l_clock').value = L.clock ? '1' : '0'; $('l_icons').value = L.icons ? '1' : '0'; $('l_iconset').value = L.iconset; $('l_allsens').value = L.allsens ? '1' : '0'; $('l_cal').value = L.cal ? '1' : '0'; $('l_wk').value = String(L.wk);
     $('l_camrate').value = String(L.camrate); $('l_camauto').value = L.camauto ? '1' : '0'; $('l_camhold').value = String(L.camhold);
     $('l_dim').value = L.dim ? '1' : '0'; $('l_dimlvl').value = String(L.dimlvl); $('l_dimwake').value = String(L.dimwake);
-    $('l_dimfrom').value = L.dimfrom || ''; $('l_dimto').value = L.dimto || ''; $('l_dimEnt').value = L.dimEnt || '';
+    $('l_dimfrom').value = L.dimfrom || ''; $('l_dimto').value = L.dimto || ''; $('l_dimEnt').value = L.dimEnt || ''; $('l_wakeEnt').value = L.wakeEnt || '';
     dimCheck();
     clearInterval(S.camTimer); S.camTimer = 0;
     if (L.camrate > 0) { S.camTimer = setInterval(camTick, L.camrate * 1000); }
@@ -722,10 +758,11 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     return w;
   }
   function dimCheck() {
-    var now = new Date().getTime(), want = dimWanted(), awake = (S.dimWake || 0) > now;
-    var show = want && !awake && !S.edit && !S.live, el = $('dim');
+    var L = S.layout, now = new Date().getTime(), want = dimWanted(), timed = (S.dimWake || 0) > now;
+    var motion = !!(L.dim && L.wakeEnt && S.states[L.wakeEnt] && S.states[L.wakeEnt].state === 'on');   // motion present: stay lit
+    var show = want && !timed && !motion && !S.edit && !S.live, el = $('dim');
     clearTimeout(S.dimT);
-    if (want && awake) { S.dimT = setTimeout(dimCheck, S.dimWake - now + 100); }
+    if (want && timed) { S.dimT = setTimeout(dimCheck, S.dimWake - now + 100); }
     if (show) { el.style.opacity = String(S.layout.dimlvl / 100); el.style.display = 'block'; } else { el.style.display = 'none'; }
     if (S.dimOn && !show) { S.dimOn = false; render(); renderCal(); camTick(); } else { S.dimOn = show; }
   }
@@ -738,16 +775,26 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     var now = new Date().getTime();
     if ((S.dimWake || 0) > now) { S.dimWake = now + S.layout.dimwake * 1000; }
   }
-  function fillDimEnt() {
-    var sel = $('l_dimEnt'), cur = S.layout.dimEnt || '', o;
+  function fillEnts(sel, cur, domains, good, none) {
+    var o = document.createElement('option'), ids, sug = [], rest = [];
     sel.innerHTML = '';
-    o = document.createElement('option'); o.value = ''; o.textContent = 'Nothing'; sel.appendChild(o);
-    Object.keys(S.states).filter(function (x) { var d = dom(x); return d === 'input_boolean' || d === 'binary_sensor' || d === 'sun' || d === 'schedule'; })
-      .sort(function (a, b) { return nameOf(S.states[a]).toLowerCase() < nameOf(S.states[b]).toLowerCase() ? -1 : 1; })
-      .forEach(function (x) { var op = document.createElement('option'); op.value = x; op.textContent = nameOf(S.states[x]) + ' (' + x + ')'; sel.appendChild(op); });
-    sel.value = cur;
+    o.value = ''; o.textContent = none; sel.appendChild(o);
+    ids = Object.keys(S.states).filter(function (x) { return domains.indexOf(dom(x)) > -1; })
+      .sort(function (a, b) { return nameOf(S.states[a]).toLowerCase() < nameOf(S.states[b]).toLowerCase() ? -1 : 1; });
+    function add(parent, x) { var op = document.createElement('option'); op.value = x; op.textContent = nameOf(S.states[x]) + ' (' + x + ')'; parent.appendChild(op); }
+    function group(label, list) { if (!list.length) { return; } var g = document.createElement('optgroup'); g.label = label; list.forEach(function (x) { add(g, x); }); sel.appendChild(g); }
+    if (good) {
+      ids.forEach(function (x) { (good.indexOf((S.states[x].attributes || {}).device_class) > -1 ? sug : rest).push(x); });
+      group('Suggested', sug); group('All others', rest);
+    } else { ids.forEach(function (x) { add(sel, x); }); }
+    sel.value = cur || '';
     if (cur && sel.value !== cur) { o = document.createElement('option'); o.value = cur; o.textContent = cur; sel.appendChild(o); sel.value = cur; }
   }
+  function fillDimEnt() {
+    fillEnts($('l_dimEnt'), S.layout.dimEnt, ['input_boolean', 'binary_sensor', 'sun', 'schedule'], null, 'Nothing');
+    fillEnts($('l_wakeEnt'), S.layout.wakeEnt, ['binary_sensor', 'event', 'input_boolean'], ['motion', 'occupancy', 'presence', 'moving'], 'Nothing');
+  }
+  function wakeScreen() { S.dimWake = new Date().getTime() + S.layout.dimwake * 1000; dimCheck(); }
 
   /* ---------- cameras: refreshing snapshots, live view, and automatic pop-up ---------- */
   var BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
@@ -885,8 +932,11 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   /* doorbell / motion triggers: a quiet WebSocket listens for the chosen entities (a normal login is enough, no admin needed),
      and the 5-second refresh is a backup that catches anything that stays on or stamps a new time */
   function watchList() {
-    var out = {};
-    Object.keys(S.cards).forEach(function (id) { var t = S.cards[id].trig; if (t && dom(id) === 'camera') { (out[t] = out[t] || []).push(id); } });
+    var out = {}, we = S.layout.wakeEnt;
+    if (S.layout.camauto) {
+      Object.keys(S.cards).forEach(function (id) { var t = S.cards[id].trig; if (t && dom(id) === 'camera') { (out[t] = out[t] || []).push(id); } });
+    }
+    if (S.layout.dim && we) { out[we] = out[we] || []; }
     return out;
   }
   function isTrig(id, oldS, newS) {
@@ -901,16 +951,21 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     S.lastTrig = now;
     openLive(cams[0], true);
   }
+  function onTrig(entity) {
+    if (S.layout.dim && entity === S.layout.wakeEnt) { wakeScreen(); }
+    fireTrig(entity);
+  }
   function camPoll(prev, cur) {
-    if (!S.layout.camauto) { return; }
-    Object.keys(watchList()).forEach(function (e) { if (prev[e] && cur[e] && isTrig(e, prev[e].state, cur[e].state)) { fireTrig(e); } });
+    var we = S.layout.wakeEnt;
+    if (S.layout.dim && we && cur[we] && prev[we] && prev[we].state === 'on' && cur[we].state !== 'on') { wakeScreen(); }   // motion just ended: a short grace period
+    Object.keys(watchList()).forEach(function (e) { if (prev[e] && cur[e] && isTrig(e, prev[e].state, cur[e].state)) { onTrig(e); } });
   }
   function stopWs() { clearTimeout(S.wsRetry); clearInterval(S.wsPing); var w = S.ws; S.ws = null; S.wsSig = ''; if (w) { try { w.close(); } catch (e) {} } }
   function startWs() {
     var w = watchList(), ids = Object.keys(w), sig = JSON.stringify(ids) + S.layout.camauto + S.token + S.url;
     if (S.ws && S.wsSig === sig) { return; }
     stopWs();
-    if (!ids.length || !S.token || !S.layout.camauto) { return; }
+    if (!ids.length || !S.token) { return; }
     var ws, nid = 2;
     try { ws = new WebSocket(wsUrl()); } catch (e) { return; }
     S.ws = ws; S.wsSig = sig;
@@ -928,7 +983,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       }
       else if (m.type === 'event' && m.event && m.event.data) {
         var d = m.event.data;
-        if (d.new_state && w[d.entity_id] && isTrig(d.entity_id, d.old_state ? d.old_state.state : '', d.new_state.state)) { fireTrig(d.entity_id); }
+        if (d.new_state && w[d.entity_id] && isTrig(d.entity_id, d.old_state ? d.old_state.state : '', d.new_state.state)) { onTrig(d.entity_id); }
       }
     };
     ws.onclose = function () {
@@ -938,14 +993,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     ws.onerror = function () { try { ws.close(); } catch (e) {} };
   }
   function fillTrig(cur) {
-    var sel = $('c_trig'), o;
-    sel.innerHTML = '';
-    o = document.createElement('option'); o.value = ''; o.textContent = 'None'; sel.appendChild(o);
-    Object.keys(S.states).filter(function (x) { var d = dom(x); return d === 'binary_sensor' || d === 'event' || d === 'input_boolean'; })
-      .sort(function (a, b) { return nameOf(S.states[a]).toLowerCase() < nameOf(S.states[b]).toLowerCase() ? -1 : 1; })
-      .forEach(function (x) { var op = document.createElement('option'); op.value = x; op.textContent = nameOf(S.states[x]) + ' (' + x + ')'; sel.appendChild(op); });
-    sel.value = cur || '';
-    if (cur && sel.value !== cur) { o = document.createElement('option'); o.value = cur; o.textContent = cur; sel.appendChild(o); sel.value = cur; }
+    fillEnts($('c_trig'), cur, ['binary_sensor', 'event', 'input_boolean'], ['doorbell', 'motion', 'occupancy', 'presence', 'sound'], 'None');
   }
 
   /* ---------- media players (Google TV, Google Home / Nest speakers, any cast device) ---------- */
@@ -1578,7 +1626,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   var ly = loadJ('ha_layout', {}), lk;
   for (lk in ly) { if (ly.hasOwnProperty(lk)) { S.layout[lk] = ly[lk]; } }
   S.cards = loadJ('ha_cards', {}); S.order = loadJ('ha_order', {}); S.groups = loadJ('ha_groups', []); S.gcfg = loadJ('ha_gcfg', {}); ensureGroups();
-  ['size', 'text', 'theme', 'accent', 'clock', 'icons', 'iconset', 'allsens', 'cal', 'wk', 'camrate', 'camauto', 'camhold', 'dim', 'dimfrom', 'dimto', 'dimlvl', 'dimwake', 'dimEnt'].forEach(function (k) {
+  ['size', 'text', 'theme', 'accent', 'clock', 'icons', 'iconset', 'allsens', 'cal', 'wk', 'camrate', 'camauto', 'camhold', 'dim', 'dimfrom', 'dimto', 'dimlvl', 'dimwake', 'dimEnt', 'wakeEnt'].forEach(function (k) {
     $('l_' + k).addEventListener('change', function () {
       S.layout[k] = (k === 'clock' || k === 'icons' || k === 'allsens' || k === 'cal' || k === 'camauto' || k === 'dim') ? this.value === '1' : ((k === 'wk' || k === 'camrate' || k === 'camhold' || k === 'dimlvl' || k === 'dimwake') ? parseInt(this.value, 10) : this.value);
       saveAll(); applyLayout(); render();
