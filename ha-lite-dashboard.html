@@ -154,6 +154,31 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 .sec>summary small{font-weight:400;font-size:12px;color:var(--muted);margin-left:6px}
 .sec>.lay,.sec>.r2{margin-top:2px;margin-bottom:6px}
 .sec>.r{margin-top:2px}
+.tile.hot{background:#f08c4a;color:#2b1204}
+.tile.cold{background:#5aa9f2;color:#04182b}
+.tile.gl{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-orient:vertical;-webkit-flex-direction:column;flex-direction:column;-webkit-box-align:center;-webkit-align-items:center;align-items:center;-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center;text-align:center;min-height:104px;padding:10px 8px}
+.tile.gl .ic{font-size:2.7em;line-height:1}
+.tile.gl .nm{width:100%;margin-top:8px;font-size:.78em;font-weight:500}
+.tile.gl.off .nm,.tile.gl.off .ic{opacity:.55}
+.tile.gl.na{opacity:.4}
+.tile.gl .val{font-size:2.1em;font-weight:300;line-height:1.1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile.gl .val.txt{font-size:1.25em;font-weight:500}
+.tile.gl .val small{font-size:.42em;margin-left:3px;opacity:.8}
+.tile.gl.camt{display:block;padding:0;min-height:0;overflow:hidden;background:#000}
+.tile.gl.camt .cam{border-radius:14px}
+.cam .cn{position:absolute;left:0;right:0;bottom:0;z-index:1;padding:20px 10px 6px;font-size:.8em;color:#fff;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:-webkit-linear-gradient(top,rgba(0,0,0,0),rgba(0,0,0,.65));background:linear-gradient(to bottom,rgba(0,0,0,0),rgba(0,0,0,.65))}
+#det .tile{margin-top:6px}
+.gbox.astile{border-style:dashed}
+.tile.gtile{cursor:pointer}
+.tile.mix{box-shadow:inset 0 0 0 2px var(--on)}
+.segs{margin-top:8px;line-height:0;white-space:nowrap}
+.segs span{display:inline-block;width:14px;height:5px;border-radius:3px;margin:0 2px;background:rgba(255,255,255,.2)}
+.segs span.a{background:var(--on)}
+.segs .bar{width:56px;overflow:hidden}
+.segs .bar i{display:block;height:5px;background:var(--on)}
+.tile.on .segs span{background:rgba(36,26,5,.25)}
+.tile.on .segs span.a,.tile.on .segs .bar i{background:var(--ink)}
+#grp_b{display:grid;grid-gap:10px;font-size:16px;margin-top:6px}
 </style>
 </head>
 <body>
@@ -183,6 +208,8 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   <details class="sec">
     <summary>Appearance <small>size, theme, icons</small></summary>
     <div class="lay">
+      <label>Card style<select id="l_style"><option value="std">Standard</option><option value="glance">Glance</option></select></label>
+      <label>Glance names<select id="l_glname"><option value="show">Show</option><option value="hide">Hide</option></select></label>
       <label>Card size<select id="l_size"><option value="s">Small</option><option value="m">Medium</option><option value="l">Large</option></select></label>
       <label>Text size<select id="l_text"><option value="s">Small</option><option value="m">Medium</option><option value="l">Large</option></select></label>
       <label>Theme<select id="l_theme"><option value="dark">Dark</option><option value="light">Light</option></select></label>
@@ -255,6 +282,8 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   </div>
   <label for="c_wide">Size</label>
   <select id="c_wide"><option value="0">Normal</option><option value="1">Wide (2 columns)</option><option value="2">Large (2 columns, 2 rows)</option></select>
+  <label for="c_gname">Name in Glance style</label>
+  <select id="c_gname"><option value="">Default</option><option value="show">Show</option><option value="hide">Hide</option></select>
   <label for="c_group">Group</label>
   <select id="c_group"></select>
   <input id="c_gnew" type="text" maxlength="40" placeholder="New group name" style="display:none;margin-top:8px">
@@ -295,6 +324,14 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 </div></div>
 
 <div id="dim"></div>
+<div id="grp" class="modal"><div class="box wide">
+  <div class="ch"><b id="grp_t"></b><button class="btn go" id="grp_close">Close</button></div>
+  <div id="grp_b"></div>
+</div></div>
+<div id="det" class="modal"><div class="box">
+  <div class="ch"><b id="det_t"></b><button class="btn go" id="det_close">Close</button></div>
+  <div id="det_b"></div>
+</div></div>
 <div id="live" class="modal"><div class="box wide live">
   <div class="ch"><b id="live_t"></b><button class="btn" id="live_mode">Use video</button><button class="btn go" id="live_close">Close</button></div>
   <div class="cam" id="live_v"></div>
@@ -305,7 +342,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 (function () {
   'use strict';
   // Bump this whenever the file is edited. Open copies of the page compare it with the server's copy and offer to update.
-  var BUILD = '2026-11-03s';
+  var BUILD = '2026-11-03u';
   var POLL_MS = 5000;
   // ---- Defaults for every device. Edit these, or use the Edit button on the page for per-device changes. ----
   var CONFIG = {
@@ -465,10 +502,35 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     return s.state === 'on';
   }
 
-  function makeTile(s) {
+  // Glance style: a big icon (or, for sensors and temperatures, a big number), colour for status, little or no text
+  function glanceValue(s) {
+    var d = dom(s.entity_id), a = s.attributes || {}, v, n;
+    if (d === 'sensor') {
+      v = s.state;
+      if (v === 'unavailable' || v === 'unknown') { return { t: '\u2013' }; }
+      if (/^-?\d+(\.\d+)?$/.test(v)) { n = parseFloat(v); v = String(Math.round(n * 10) / 10); return { t: v, u: a.unit_of_measurement || '' }; }
+      return { t: v, u: '', txt: true };
+    }
+    if (d === 'climate' && a.current_temperature !== undefined) { return { t: (Math.round(a.current_temperature * 10) / 10) + '\u00B0' }; }
+    if (d === 'input_select' || d === 'select') { return { t: pretty(s.state), txt: true }; }
+    return null;
+  }
+  function glanceBody(t, s, cd) {
+    var v = glanceValue(s);
+    if (v) {
+      var ve = el('div', 'val' + (v.txt ? ' txt' : ''), v.t);
+      if (v.u) { ve.appendChild(el('small', '', v.u)); }
+      t.appendChild(ve);
+    } else { t.appendChild(iconNode(iconFor(s))); }
+    if ((cd.gname || S.layout.glname) === 'hide') { t.className += ' noname'; } else { t.appendChild(el('div', 'nm', nameOf(s))); }
+  }
+
+  function makeTile(s, std) {
     var d = dom(s.entity_id), cfg = DOM[d], a = s.attributes || {};
     var t = el('div', 'tile');
     var cd = card(s.entity_id);
+    var gl = S.layout.style === 'glance' && !std;
+    if (gl) { t.className += ' gl'; t.setAttribute('data-id', s.entity_id); }
     var sz = cd.size || (cd.wide ? 'wide' : (d === 'camera' ? 'wide' : ''));
     if (sz && sz !== 'normal' && S.curCols > 1) { t.className += sz === 'big' ? ' big' : ' wide'; }
     var toggleable = !!cfg.a;
@@ -476,11 +538,19 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     if (d !== 'scene' && d !== 'script' && d !== 'button' && d !== 'sensor' && d !== 'input_select' && d !== 'select' && d !== 'camera') { t.className += on ? ' on' : ' off'; }
     if (s.state === 'unavailable') { t.className += ' off'; }
     if (!toggleable) { t.className += ' ro'; }
-    if (d === 'camera') { t.appendChild(camBox(s)); }
+    if (gl && s.state === 'unavailable') { t.className += ' na'; }
+    if (gl && d === 'climate' && on) {
+      var act = a.hvac_action;
+      if (act === 'heating' || (!act && s.state === 'heat')) { t.className += ' hot'; } else if (act === 'cooling' || (!act && s.state === 'cool')) { t.className += ' cold'; }
+    }
+    if (d === 'camera') { t.appendChild(camBox(s, gl)); if (gl) { t.className += ' camt'; } }
+    else if (gl) { glanceBody(t, s, cd); }
     else if (S.layout.icons) { t.appendChild(iconNode(iconFor(s))); }
-    t.appendChild(el('div', 'nm', nameOf(s)));
-    t.appendChild(el('div', 'st', stateText(s)));
-    if (d === 'media_player') { var np = nowPlaying(s); if (np) { t.appendChild(el('div', 'np', np)); } }
+    if (!gl) {
+      t.appendChild(el('div', 'nm', nameOf(s)));
+      t.appendChild(el('div', 'st', stateText(s)));
+      if (d === 'media_player') { var np = nowPlaying(s); if (np) { t.appendChild(el('div', 'np', np)); } }
+    }
     if (S.edit) {
       var hd = isHidden(s.entity_id);
       if (hd) { t.className += ' hid'; }
@@ -492,6 +562,12 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       return t;
     }
 
+    if (gl) {                                   // no controls on the card: tap acts, anything else opens the details pop-up
+      if (d === 'camera') { if (s.state !== 'unavailable') { t.addEventListener('click', function () { if (!S.noClick) { openLive(s.entity_id, false); } }); } }
+      else if (toggleable && s.state !== 'unavailable') { t.addEventListener('click', function () { if (!S.noClick) { tap(s); } }); }
+      else { t.addEventListener('click', function () { if (!S.noClick) { openDet(s.entity_id); } }); }
+      return t;
+    }
     if (d === 'light' && on && a.supported_color_modes && a.brightness !== undefined &&
         !(a.supported_color_modes.length === 1 && a.supported_color_modes[0] === 'onoff')) {
       var r = document.createElement('input');
@@ -556,7 +632,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   function gwidth(name) { var c = S.gcfg[name]; return c && c.w !== undefined ? c.w : 2; }   // columns; 0 = full row
   function makeGroupBox(name, items) {
     var w = gwidth(name), span = w === 0 ? S.cols : Math.min(w, S.cols);
-    var box = el('div', 'gbox');
+    var box = el('div', 'gbox' + ((S.gcfg[name] || {}).mode === 'tile' ? ' astile' : ''));
     box.setAttribute('data-g', name);
     box.style.gridColumn = span >= S.cols ? '1 / -1' : 'span ' + span;
     box.appendChild(groupHeader(name));
@@ -607,10 +683,13 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     units.sort(unitCmp);
     units.forEach(function (u) {
       if (u.card) { grid.appendChild(makeTile(u.card)); S.shownIds.push(u.k); }
+      else if (!S.edit && (S.gcfg[u.g] || {}).mode === 'tile') { grid.appendChild(makeGroupTile(u.g, byG[u.g])); }
       else { grid.appendChild(makeGroupBox(u.g, byG[u.g])); }
     });
     var em = $('empty');
     em.style.display = list.length ? 'none' : 'block';
+    if (S.det && !S.drag) { renderDet(); }
+    if (S.grp && !S.drag) { renderGrp(); }
     em.textContent = list.length ? '' : (S.edit ? 'No matching entities.' : 'Nothing shown yet. Tap Edit, then tap Hidden on the cards you want. (Check Settings if no cards appear in Edit mode.)');
   }
 
@@ -628,7 +707,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   /* ---------- layout, modes, card editor ---------- */
   var SIZES = { s: 118, m: 150, l: 200 }, TEXT = { s: 14, m: 16, l: 19 };
   var ACC = { amber: ['#f2b134', '#241a05'], teal: ['#3cc7b0', '#04231e'], blue: ['#5aa9f2', '#04182b'], rose: ['#f0708f', '#2b0613'], green: ['#8bd05a', '#102105'] };
-  function defLayout() { return { size: 'm', text: 'm', theme: 'dark', accent: 'amber', clock: true, icons: true, iconset: 'mdi', allsens: true, cal: true, wk: 1, camrate: 5, camauto: true, camhold: 45, dim: false, dimfrom: '22:00', dimto: '06:30', dimlvl: 85, dimwake: 30, dimEnt: '', wakeEnt: '' }; }
+  function defLayout() { return { size: 'm', text: 'm', theme: 'dark', accent: 'amber', clock: true, icons: true, iconset: 'mdi', allsens: true, cal: true, wk: 1, camrate: 5, camauto: true, camhold: 45, dim: false, dimfrom: '22:00', dimto: '06:30', dimlvl: 85, dimwake: 30, dimEnt: '', wakeEnt: '', style: 'std', glname: 'show' }; }
   function card(id) { return S.cards[id] || {}; }
   function loadJ(k, def) { try { return JSON.parse(store(k)) || def; } catch (e) { return def; } }
   function saveAll() { store('ha_layout', JSON.stringify(S.layout)); store('ha_cards', JSON.stringify(S.cards)); store('ha_order', JSON.stringify(S.order)); store('ha_groups', JSON.stringify(S.groups)); store('ha_gcfg', JSON.stringify(S.gcfg)); store('ha_hidden', JSON.stringify(S.local)); }
@@ -645,7 +724,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     $('l_clock').value = L.clock ? '1' : '0'; $('l_icons').value = L.icons ? '1' : '0'; $('l_iconset').value = L.iconset; $('l_allsens').value = L.allsens ? '1' : '0'; $('l_cal').value = L.cal ? '1' : '0'; $('l_wk').value = String(L.wk);
     $('l_camrate').value = String(L.camrate); $('l_camauto').value = L.camauto ? '1' : '0'; $('l_camhold').value = String(L.camhold);
     $('l_dim').value = L.dim ? '1' : '0'; $('l_dimlvl').value = String(L.dimlvl); $('l_dimwake').value = String(L.dimwake);
-    $('l_dimfrom').value = L.dimfrom || ''; $('l_dimto').value = L.dimto || ''; $('l_dimEnt').value = L.dimEnt || ''; $('l_wakeEnt').value = L.wakeEnt || '';
+    $('l_dimfrom').value = L.dimfrom || ''; $('l_dimto').value = L.dimto || ''; $('l_dimEnt').value = L.dimEnt || ''; $('l_wakeEnt').value = L.wakeEnt || ''; $('l_style').value = L.style || 'std'; $('l_glname').value = L.glname || 'show';
     dimCheck();
     clearInterval(S.camTimer); S.camTimer = 0;
     if (L.camrate > 0) { S.camTimer = setInterval(camTick, L.camrate * 1000); }
@@ -706,6 +785,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     $('c_wide').value = c.size === 'big' ? '2' : (c.size === 'wide' || c.wide || (d === 'camera' && !c.size)) ? '1' : '0'; $('c_modes').value = c.modes || 'drop';
     $('c_vis').value = isHidden(id) ? '1' : '0';
     fillGroups(groupOf(id));
+    $('c_gname').value = c.gname || '';
     var isCam = d === 'camera';
     $('c_trig').style.display = isCam ? 'block' : 'none'; $('c_trig_l').style.display = isCam ? 'block' : 'none';
     if (isCam) { fillTrig(c.trig); }
@@ -733,6 +813,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       if (gn) { if (S.groups.indexOf(gn) < 0) { S.groups.push(gn); } g = gn; }
     }
     if (g) { c.group = g; }
+    if ($('c_gname').value) { c.gname = $('c_gname').value; }
     var tr = $('c_trig').value;
     if (tr && dom(id) === 'camera') { c.trig = tr; }
     if (Object.keys(c).length) { S.cards[id] = c; } else { delete S.cards[id]; }
@@ -824,11 +905,12 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       pre.src = u;
     });
   }
-  function camBox(s) {
+  function camBox(s, gl) {
     var id = s.entity_id, c = S.cam[id] || (S.cam[id] = {}), w = el('div', 'cam'), im = document.createElement('img');
     im.setAttribute('data-cam', id); im.alt = '';
     if (c.url) { im.src = c.url; } else { fetchSnap(id); }
     w.appendChild(im);
+    if (gl && (card(id).gname || S.layout.glname) !== 'hide') { w.appendChild(el('div', 'cn', nameOf(s))); }
     return w;
   }
   function camTick() {
@@ -1046,6 +1128,90 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     return out;
   }
 
+  /* ---------- groups shown as one tile that opens a pop-up with the full cards ---------- */
+  var ACTIVE_DOMS = ['light', 'switch', 'input_boolean', 'fan', 'cover', 'lock', 'binary_sensor', 'media_player', 'climate', 'automation'];
+  var GIC = { cover: ['window-shutter-open', 'window-shutter'], light: ['lightbulb-group', 'lightbulb-group-outline'], switch: ['toggle-switch', 'toggle-switch-off'],
+    lock: ['lock-open-variant', 'lock'], fan: ['fan', 'fan-off'], media_player: ['cast', 'cast-off'], climate: ['thermostat', 'thermostat'],
+    camera: ['cctv', 'cctv'], binary_sensor: ['radiobox-marked', 'radiobox-blank'], input_boolean: ['toggle-switch', 'toggle-switch-off'],
+    automation: ['robot', 'robot'], sensor: ['chart-line', 'chart-line'] };
+  function groupStatus(items) {
+    var r = { tot: 0, act: 0, segs: [] };
+    items.forEach(function (s) {
+      if (ACTIVE_DOMS.indexOf(dom(s.entity_id)) < 0) { return; }
+      var a = s.state !== 'unavailable' && isOn(s);
+      r.tot++; if (a) { r.act++; } r.segs.push(a);
+    });
+    return r;
+  }
+  function groupIcon(name, items, st) {
+    var c = S.gcfg[name] || {}, mdi = S.layout.iconset === 'mdi' && S.mdiOk !== false, doms = {}, ks, d;
+    if (c.icon) { if (c.icon.indexOf('mdi:') !== 0 || mdi) { return c.icon; } }
+    items.forEach(function (s) { doms[dom(s.entity_id)] = 1; });
+    ks = Object.keys(doms); d = ks.length === 1 ? ks[0] : '';
+    if (mdi) { return 'mdi:' + (d && GIC[d] ? GIC[d][st.act > 0 ? 0 : 1] : 'view-grid-outline'); }
+    return d && DOM[d] ? DOM[d].i : '\uD83D\uDCC1';
+  }
+  function makeGroupTile(name, items) {
+    var st = groupStatus(items), t = el('div', 'tile gl gtile' + (st.tot ? (st.act === st.tot ? ' on' : (st.act === 0 ? ' off' : ' mix')) : ''));
+    t.appendChild(iconNode(groupIcon(name, items, st)));
+    t.appendChild(el('div', 'nm', name));
+    if (st.tot) {
+      var sg = el('div', 'segs');
+      if (st.tot <= 10) { st.segs.forEach(function (a) { sg.appendChild(el('span', a ? 'a' : '')); }); }
+      else { var bar = el('span', 'bar'), fill = el('i'); fill.style.width = Math.round(st.act * 100 / st.tot) + '%'; bar.appendChild(fill); sg.appendChild(bar); }
+      t.appendChild(sg);
+    }
+    t.addEventListener('click', function () { openGrp(name); });
+    return t;
+  }
+  function renderGrp() {
+    var name = S.grp, b = $('grp_b'), prev = S.curCols, items = [], cols;
+    Object.keys(S.states).forEach(function (id) { if (DOM[dom(id)] && groupOf(id) === name && !isHidden(id)) { items.push(S.states[id]); } });
+    if (!items.length) { closeGrp(); return; }
+    items.sort(cmp);
+    $('grp_t').textContent = name;
+    b.innerHTML = '';
+    cols = Math.max(1, Math.floor(((b.clientWidth || 600) + 10) / 180));
+    if (cols > 4) { cols = 4; }
+    b.style.gridTemplateColumns = 'repeat(' + cols + ',minmax(0,1fr))';
+    S.curCols = cols;
+    items.forEach(function (s) { b.appendChild(makeTile(s, true)); });
+    S.curCols = prev;
+  }
+  function openGrp(name) { S.grp = name; $('grp').style.display = 'block'; renderGrp(); }
+  function closeGrp() { S.grp = null; $('grp').style.display = 'none'; $('grp_b').innerHTML = ''; }
+
+  /* ---------- details pop-up (Glance style): the full card with all its controls ---------- */
+  function renderDet() {
+    var st = S.states[S.det], b = $('det_b'), prev = S.curCols;
+    if (!st) { closeDet(); return; }
+    b.innerHTML = ''; $('det_t').textContent = nameOf(st);
+    S.curCols = 1; b.appendChild(makeTile(st, true)); S.curCols = prev;
+  }
+  function openDet(id) { S.det = id; renderDet(); if (S.det) { $('det').style.display = 'block'; } }
+  function closeDet() { S.det = null; $('det').style.display = 'none'; $('det_b').innerHTML = ''; }
+  function wireHold() {
+    var g = $('grid'), tm = 0, held = false, sx = 0, sy = 0;
+    function tileOf(n) { while (n && n !== g) { if (n.className && hasCls(n, 'tile')) { return n; } n = n.parentNode; } return null; }
+    function stop() { clearTimeout(tm); tm = 0; if (held) { held = false; setTimeout(function () { S.noClick = false; }, 450); } }
+    function start(target, x, y) {
+      if (S.edit || S.layout.style !== 'glance') { return; }
+      var t = tileOf(target);
+      if (!t || !t.getAttribute('data-id') || hasCls(t, 'camt')) { return; }
+      sx = x; sy = y; clearTimeout(tm);
+      tm = setTimeout(function () { tm = 0; held = true; S.noClick = true; openDet(t.getAttribute('data-id')); }, 550);
+    }
+    function move(x, y) { if (tm && (Math.abs(x - sx) > 10 || Math.abs(y - sy) > 10)) { clearTimeout(tm); tm = 0; } }
+    g.addEventListener('touchstart', function (e) { if (e.touches.length === 1) { start(e.target, e.touches[0].clientX, e.touches[0].clientY); } else { stop(); } }, false);
+    g.addEventListener('touchmove', function (e) { if (e.touches[0]) { move(e.touches[0].clientX, e.touches[0].clientY); } }, false);
+    g.addEventListener('touchend', stop, false);
+    g.addEventListener('touchcancel', stop, false);
+    g.addEventListener('mousedown', function (e) { if (e.button === 0 && new Date().getTime() - (S.lastTouch || 0) > 800) { start(e.target, e.clientX, e.clientY); } }, false);
+    g.addEventListener('mousemove', function (e) { move(e.clientX, e.clientY); }, false);
+    g.addEventListener('mouseup', stop, false);
+    g.addEventListener('mouseleave', stop, false);
+  }
+
   /* ---------- drag to reorder (Edit mode only) ----------
      Nothing moves in the page while you drag: a copy of the card follows your finger (a cheap transform),
      positions are measured once at pick-up, and a marker shows where it will land. The page is rebuilt once, on drop.
@@ -1236,18 +1402,36 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     sel.value = cur || '';
     $('c_gnew').value = ''; $('c_gnew').style.display = 'none';
   }
+  function gset(name, key, val) {
+    var c = S.gcfg[name] || {};
+    if (val === null) { delete c[key]; } else { c[key] = val; }
+    S.gcfg[name] = c; saveAll(); render();
+  }
   function groupHeader(name) {
-    var h = el('div', 'gh');
+    var h = el('div', 'gh'), cfg = S.gcfg[name] || {}, tile = cfg.mode === 'tile';
     h.setAttribute('data-g', name);
     h.appendChild(el('span', 'gn', name));
     if (S.edit) {
-      var sl = document.createElement('select');
-      [['1', '1 col'], ['2', '2 cols'], ['3', '3 cols'], ['4', '4 cols'], ['0', 'Full row']].forEach(function (o) {
-        var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; sl.appendChild(op);
-      });
-      sl.value = String(gwidth(name));
-      sl.addEventListener('change', function () { S.gcfg[name] = { w: parseInt(sl.value, 10) }; saveAll(); render(); });
-      h.appendChild(sl);
+      function mk(opts, val, key, conv) {
+        var sl = document.createElement('select');
+        opts.forEach(function (o) { var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; sl.appendChild(op); });
+        sl.value = String(val);
+        sl.addEventListener('change', function () { gset(name, key, conv ? conv(sl.value) : sl.value); });
+        h.appendChild(sl);
+      }
+      mk([['box', 'Box'], ['tile', 'Tile']], tile ? 'tile' : 'box', 'mode');
+      if (tile) {
+        var ib = el('button', '', 'Icon');
+        ib.addEventListener('click', function () {
+          var v = prompt('Icon for this group: an mdi: name (for example mdi:window-shutter) or an emoji. Leave blank for automatic.', cfg.icon || '');
+          if (v === null) { return; }
+          v = v.replace(/\s+/g, '');
+          gset(name, 'icon', v ? v : null);
+        });
+        h.appendChild(ib);
+      } else {
+        mk([['1', '1 col'], ['2', '2 cols'], ['3', '3 cols'], ['4', '4 cols'], ['0', 'Full row']], gwidth(name), 'w', function (v) { return parseInt(v, 10); });
+      }
       [['Rename', function () { renameGroup(name); }], ['Delete', function () { deleteGroup(name); }]].forEach(function (b) {
         var x = el('button', '', b[0]); x.addEventListener('click', b[1]); h.appendChild(x);
       });
@@ -1280,6 +1464,11 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   var MDI = { light: 'lightbulb', switch: 'toggle-switch', input_boolean: 'toggle-switch', fan: 'fan', cover: 'window-shutter',
     lock: 'lock', climate: 'thermostat', input_select: 'format-list-bulleted', select: 'format-list-bulleted', scene: 'palette',
     script: 'script-text-play', media_player: 'cast', camera: 'cctv', button: 'gesture-tap-button', automation: 'robot', sensor: 'chart-line', binary_sensor: 'radiobox-marked' };
+  var BSI = { door: ['door-open', 'door-closed'], window: ['window-open', 'window-closed'], garage_door: ['garage-open', 'garage'],
+    motion: ['motion-sensor', 'motion-sensor-off'], occupancy: ['home', 'home-outline'], presence: ['account', 'account-outline'],
+    moisture: ['water', 'water-off'], smoke: ['smoke-detector', 'smoke-detector'], lock: ['lock-open-variant', 'lock'],
+    plug: ['power-plug', 'power-plug-off'], battery: ['battery-alert', 'battery'], sound: ['volume-high', 'volume-off'],
+    vibration: ['vibrate', 'vibrate-off'], connectivity: ['wifi', 'wifi-off'] };
   var MDIS = { 'light:off': 'lightbulb-outline', 'lock:unlocked': 'lock-open-variant', 'cover:open': 'window-shutter-open', 'fan:off': 'fan-off',
     'switch:off': 'toggle-switch-off', 'input_boolean:off': 'toggle-switch-off' };
   var STATEFUL = ['media_player', 'light', 'switch', 'input_boolean', 'fan', 'cover', 'lock', 'climate', 'automation', 'binary_sensor'];
@@ -1296,6 +1485,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       if (mdi) { return 'mdi:' + base + ((s.state === 'off' || s.state === 'standby') ? '-off' : ''); }
       return dc === 'speaker' ? '\uD83D\uDD0A' : DOM[d].i;
     }
+    if (mdi && d === 'binary_sensor' && BSI[a.device_class]) { return 'mdi:' + BSI[a.device_class][isOn(s) ? 0 : 1]; }
     if (mdi) { return 'mdi:' + (MDIS[d + ':' + s.state] || MDI[d]); }
     return DOM[d].i;
   }
@@ -1536,7 +1726,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       S.chk = false;
       var m = /var BUILD = '([^']+)'/.exec(t);
       if (!m || m[1] === BUILD) { return; }
-      var open = S.edit || $('cfg').style.display === 'block' || $('ced').style.display === 'block' || $('bk').style.display === 'block' || $('calm').style.display === 'block' || $('cev').style.display === 'block' || $('calsel').style.display === 'block' || $('live').style.display === 'block';
+      var open = S.edit || $('cfg').style.display === 'block' || $('ced').style.display === 'block' || $('bk').style.display === 'block' || $('calm').style.display === 'block' || $('cev').style.display === 'block' || $('calsel').style.display === 'block' || $('live').style.display === 'block' || $('det').style.display === 'block' || $('grp').style.display === 'block';
       var tried = null;
       try { tried = sessionStorage.getItem('ha_upd'); } catch (e) {}
       if (!open && tried !== m[1]) {
@@ -1600,6 +1790,9 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   try { S.local = JSON.parse(store('ha_hidden') || '{}') || {}; } catch (e) { S.local = {}; }
   $('edit').addEventListener('click', function () { setEdit(!S.edit); });
   wireDrag();
+  wireHold();
+  $('det_close').addEventListener('click', closeDet);
+  $('grp_close').addEventListener('click', closeGrp);
   $('live_close').addEventListener('click', closeLive);
   $('live_mode').addEventListener('click', function () { if (S.live) { S.live.note = ''; S.live.tried = {}; startLive(S.live.mode === 'hls' ? 'mjpeg' : 'hls'); } });
   $('live').addEventListener('touchstart', liveTouched, false);
@@ -1626,7 +1819,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   var ly = loadJ('ha_layout', {}), lk;
   for (lk in ly) { if (ly.hasOwnProperty(lk)) { S.layout[lk] = ly[lk]; } }
   S.cards = loadJ('ha_cards', {}); S.order = loadJ('ha_order', {}); S.groups = loadJ('ha_groups', []); S.gcfg = loadJ('ha_gcfg', {}); ensureGroups();
-  ['size', 'text', 'theme', 'accent', 'clock', 'icons', 'iconset', 'allsens', 'cal', 'wk', 'camrate', 'camauto', 'camhold', 'dim', 'dimfrom', 'dimto', 'dimlvl', 'dimwake', 'dimEnt', 'wakeEnt'].forEach(function (k) {
+  ['size', 'text', 'theme', 'accent', 'clock', 'icons', 'iconset', 'allsens', 'cal', 'wk', 'camrate', 'camauto', 'camhold', 'dim', 'dimfrom', 'dimto', 'dimlvl', 'dimwake', 'dimEnt', 'wakeEnt', 'style', 'glname'].forEach(function (k) {
     $('l_' + k).addEventListener('change', function () {
       S.layout[k] = (k === 'clock' || k === 'icons' || k === 'allsens' || k === 'cal' || k === 'camauto' || k === 'dim') ? this.value === '1' : ((k === 'wk' || k === 'camrate' || k === 'camhold' || k === 'dimlvl' || k === 'dimwake') ? parseInt(this.value, 10) : this.value);
       saveAll(); applyLayout(); render();
