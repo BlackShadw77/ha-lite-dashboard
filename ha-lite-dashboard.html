@@ -7,6 +7,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Home">
 <title>Home</title>
+<link rel="icon" type="image/x-icon" href="lite-dash.ico">
+<link rel="shortcut icon" type="image/x-icon" href="lite-dash.ico">
 <style>
 /* iOS 12 safe: no flex gap, no aspect-ratio, no inset, no optional chaining */
 :root{--bg:#14181c;--panel:#1e252b;--panel2:#28323a;--text:#e8ecef;--muted:#8a96a0;--on:#f2b134;--ink:#241a05;--bad:#e5604d}
@@ -75,9 +77,9 @@ select{-webkit-appearance:none;appearance:none;width:100%;font-size:15px;padding
 #editbar .r2 .btn{margin:0 8px 0 0}
 .modal select{margin-top:2px}
 .modal textarea{width:100%;height:150px;font:12px/1.3 Menlo,monospace;padding:8px;border-radius:8px;border:1px solid #3a4650;background:var(--bg);color:var(--text);-webkit-appearance:none}
-#ic_res,#ic_res2{max-height:140px;overflow:auto;-webkit-overflow-scrolling:touch;margin-top:8px}
-#ic_res span,#ic_res2 span{display:inline-block;width:40px;height:40px;line-height:40px;text-align:center;font-size:24px;border-radius:8px;background:var(--panel2);margin:0 6px 6px 0}
-#ic_res small,#ic_res2 small{font-size:13px;color:var(--muted)}
+#ic_res,#ic_res2,#ic_res3{max-height:140px;overflow:auto;-webkit-overflow-scrolling:touch;margin-top:8px}
+#ic_res span,#ic_res2 span,#ic_res3 span{display:inline-block;width:40px;height:40px;line-height:40px;text-align:center;font-size:24px;border-radius:8px;background:var(--panel2);margin:0 6px 6px 0}
+#ic_res small,#ic_res2 small,#ic_res3 small{font-size:13px;color:var(--muted)}
 #editbar .chk{display:block;margin-top:10px;font-size:15px}
 #editbar .chk input{width:20px;height:20px;vertical-align:-4px;margin:0 8px 0 0;-webkit-appearance:checkbox}
 .tile.big{grid-column:span 2;grid-row:span 2;align-self:stretch}
@@ -179,6 +181,9 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 .tile.on .segs span{background:rgba(36,26,5,.25)}
 .tile.on .segs span.a,.tile.on .segs .bar i{background:var(--ink)}
 #grp_b{display:grid;grid-gap:10px;font-size:16px;margin-top:6px}
+.gn small{font-weight:400;color:var(--muted);margin-left:6px}
+#g_err{color:#e5604d;font-size:14px;margin:8px 0 0}
+#g_del.armed{background:#e5604d;color:#fff}
 </style>
 </head>
 <body>
@@ -311,6 +316,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   <h2>Backup / restore</h2>
   <p>Copy this text to keep your layout or paste it into another device, then tap Apply there.</p>
   <textarea id="bk_t" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+  <p id="bk_err" style="color:#e5604d"></p>
   <div class="row"><button class="btn" id="bk_close">Close</button><button class="btn go" id="bk_apply">Apply</button></div>
 </div></div>
 
@@ -324,6 +330,25 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 </div></div>
 
 <div id="dim"></div>
+<div id="ged" class="modal"><div class="box">
+  <h2>Edit group</h2>
+  <label for="g_name">Name</label>
+  <input id="g_name" type="text" maxlength="40" autocorrect="off">
+  <label for="g_mode">Display</label>
+  <select id="g_mode"><option value="box">Box (cards shown on the page)</option><option value="tile">Tile (opens a pop-up)</option></select>
+  <div id="g_wrap">
+    <label for="g_w">Width</label>
+    <select id="g_w"><option value="1">1 column</option><option value="2">2 columns</option><option value="3">3 columns</option><option value="4">4 columns</option><option value="0">Full row</option></select>
+  </div>
+  <div id="g_iwrap">
+    <label for="g_icon">Icon: search by name (e.g. blinds), or type an mdi: name or an emoji. Blank chooses one automatically.</label>
+    <input id="g_icon" type="text" maxlength="60" autocapitalize="off" autocorrect="off">
+    <div id="ic_res3"></div>
+  </div>
+  <label class="cs"><input type="checkbox" id="g_hide"> Also hide its cards when deleting</label>
+  <p id="g_err"></p>
+  <div class="row"><button class="btn" id="g_del">Delete group</button><button class="btn" id="g_cancel">Cancel</button><button class="btn go" id="g_save">Save</button></div>
+</div></div>
 <div id="grp" class="modal"><div class="box wide">
   <div class="ch"><b id="grp_t"></b><button class="btn go" id="grp_close">Close</button></div>
   <div id="grp_b"></div>
@@ -342,7 +367,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 (function () {
   'use strict';
   // Bump this whenever the file is edited. Open copies of the page compare it with the server's copy and offer to update.
-  var BUILD = '2026-11-03u';
+  var BUILD = '2026-11-03x';
   var POLL_MS = 5000;
   // ---- Defaults for every device. Edit these, or use the Edit button on the page for per-device changes. ----
   var CONFIG = {
@@ -453,7 +478,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       migrateDefaults(); camPoll(prevSt, m);
       S.busy = false;
       setStatus('live');
-      if (!S.dimOn) { render(); }
+      if (!S.dimOn && !S.edit && shownChanged(prevSt, m)) { render(); }
       dimCheck();
       if (!S.calInit) { S.calInit = true; loadCals(); }
     }).catch(function (e) {
@@ -646,8 +671,25 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     return box;
   }
 
+  // a refresh only redraws the cards if something you can see actually changed (and never while editing)
+  function shownChanged(prev, cur) {
+    var ids = Object.keys(cur), i, id, a, b;
+    for (i = 0; i < ids.length; i++) {
+      id = ids[i];
+      if (!DOM[dom(id)] || isHidden(id)) { continue; }
+      a = prev[id]; b = cur[id];
+      if (!a || a.state !== b.state || a.last_updated !== b.last_updated) { return true; }
+    }
+    ids = Object.keys(prev);
+    for (i = 0; i < ids.length; i++) { id = ids[i]; if (DOM[dom(id)] && !isHidden(id) && !cur[id]) { return true; } }
+    return false;
+  }
+
   function render() {
     var ids = Object.keys(S.states), vis = [], has = {}, i, q = S.edit ? S.q.toLowerCase() : '';
+    // measure and remember BEFORE anything is emptied: asking for the width of an emptied grid makes the page
+    // momentarily short, and the browser then throws the scroll position back to the top
+    var gridW = $('grid').clientWidth, keepY = window.pageYOffset, keepX = $('tabs').scrollLeft;
     for (i = 0; i < ids.length; i++) {
       var d = dom(ids[i]), st = S.states[ids[i]];
       if (!DOM[d]) { continue; }
@@ -671,7 +713,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     });
     list.sort(cmp);
     var grid = $('grid'); grid.innerHTML = '';
-    S.cols = Math.max(1, Math.floor((grid.clientWidth + 10) / (SIZES[S.layout.size] + 10)));
+    S.cols = Math.max(1, Math.floor((gridW + 10) / (SIZES[S.layout.size] + 10)));
     S.shownIds = [];
     S.curCols = S.cols;
     var gi = {}, byG = {}, loose = [];
@@ -691,6 +733,8 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     if (S.det && !S.drag) { renderDet(); }
     if (S.grp && !S.drag) { renderGrp(); }
     em.textContent = list.length ? '' : (S.edit ? 'No matching entities.' : 'Nothing shown yet. Tap Edit, then tap Hidden on the cards you want. (Check Settings if no cards appear in Edit mode.)');
+    $('tabs').scrollLeft = keepX;
+    if (Math.abs(window.pageYOffset - keepY) > 1) { window.scrollTo(0, keepY); }
   }
 
   function setEdit(on) {
@@ -1170,13 +1214,15 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     if (!items.length) { closeGrp(); return; }
     items.sort(cmp);
     $('grp_t').textContent = name;
-    b.innerHTML = '';
     cols = Math.max(1, Math.floor(((b.clientWidth || 600) + 10) / 180));
+    var keepTop = $('grp').scrollTop;
+    b.innerHTML = '';
     if (cols > 4) { cols = 4; }
     b.style.gridTemplateColumns = 'repeat(' + cols + ',minmax(0,1fr))';
     S.curCols = cols;
     items.forEach(function (s) { b.appendChild(makeTile(s, true)); });
     S.curCols = prev;
+    $('grp').scrollTop = keepTop;
   }
   function openGrp(name) { S.grp = name; $('grp').style.display = 'block'; renderGrp(); }
   function closeGrp() { S.grp = null; $('grp').style.display = 'none'; $('grp_b').innerHTML = ''; }
@@ -1402,62 +1448,59 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     sel.value = cur || '';
     $('c_gnew').value = ''; $('c_gnew').style.display = 'none';
   }
-  function gset(name, key, val) {
-    var c = S.gcfg[name] || {};
-    if (val === null) { delete c[key]; } else { c[key] = val; }
-    S.gcfg[name] = c; saveAll(); render();
-  }
   function groupHeader(name) {
-    var h = el('div', 'gh'), cfg = S.gcfg[name] || {}, tile = cfg.mode === 'tile';
+    var h = el('div', 'gh'), sp = el('span', 'gn', name);
     h.setAttribute('data-g', name);
-    h.appendChild(el('span', 'gn', name));
-    if (S.edit) {
-      function mk(opts, val, key, conv) {
-        var sl = document.createElement('select');
-        opts.forEach(function (o) { var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; sl.appendChild(op); });
-        sl.value = String(val);
-        sl.addEventListener('change', function () { gset(name, key, conv ? conv(sl.value) : sl.value); });
-        h.appendChild(sl);
-      }
-      mk([['box', 'Box'], ['tile', 'Tile']], tile ? 'tile' : 'box', 'mode');
-      if (tile) {
-        var ib = el('button', '', 'Icon');
-        ib.addEventListener('click', function () {
-          var v = prompt('Icon for this group: an mdi: name (for example mdi:window-shutter) or an emoji. Leave blank for automatic.', cfg.icon || '');
-          if (v === null) { return; }
-          v = v.replace(/\s+/g, '');
-          gset(name, 'icon', v ? v : null);
-        });
-        h.appendChild(ib);
-      } else {
-        mk([['1', '1 col'], ['2', '2 cols'], ['3', '3 cols'], ['4', '4 cols'], ['0', 'Full row']], gwidth(name), 'w', function (v) { return parseInt(v, 10); });
-      }
-      [['Rename', function () { renameGroup(name); }], ['Delete', function () { deleteGroup(name); }]].forEach(function (b) {
-        var x = el('button', '', b[0]); x.addEventListener('click', b[1]); h.appendChild(x);
-      });
-    }
+    if ((S.gcfg[name] || {}).mode === 'tile') { sp.appendChild(el('small', '', 'tile')); }
+    h.appendChild(sp);
+    if (S.edit) { var eb = el('button', '', 'Edit'); eb.addEventListener('click', function () { openGroupEd(name); }); h.appendChild(eb); }
     return h;
   }
-  function renameGroup(name) {
-    var n = prompt('Rename group', name);
-    if (n === null) { return; }
-    n = n.replace(/^\s+|\s+$/g, '');
-    if (!n || n === name) { return; }
-    if (S.groups.indexOf(n) > -1) { alert('A group with that name already exists.'); return; }
-    S.groups[S.groups.indexOf(name)] = n;
-    if (S.gcfg[name]) { S.gcfg[n] = S.gcfg[name]; delete S.gcfg[name]; }
-    if (S.order['g:' + name] !== undefined) { S.order['g:' + n] = S.order['g:' + name]; delete S.order['g:' + name]; }
-    Object.keys(S.cards).forEach(function (id) { if (S.cards[id].group === name) { S.cards[id].group = n; } });
-    saveAll(); render();
+  function groupEdToggle() {
+    var t = $('g_mode').value === 'tile';
+    $('g_wrap').style.display = t ? 'none' : 'block'; $('g_iwrap').style.display = t ? 'block' : 'none';
   }
-  function deleteGroup(name) {
-    if (!confirm('Delete the group \u201C' + name + '\u201D? Its cards stay on the dashboard, ungrouped.')) { return; }
+  function openGroupEd(name) {
+    var c = S.gcfg[name] || {};
+    S.gedit = name; S.gdelArm = false; clearTimeout(S.gdelT);
+    $('g_name').value = name; $('g_mode').value = c.mode === 'tile' ? 'tile' : 'box';
+    $('g_w').value = String(gwidth(name)); $('g_icon').value = c.icon || '';
+    $('g_hide').checked = false;
+    $('ic_res3').innerHTML = ''; $('g_err').textContent = ''; $('g_del').textContent = 'Delete group'; $('g_del').className = 'btn';
+    groupEdToggle();
+    $('ged').style.display = 'block';
+  }
+  function closeGroupEd() { clearTimeout(S.gdelT); S.gedit = null; $('ged').style.display = 'none'; }
+  function saveGroupEd() {
+    var old = S.gedit, n = $('g_name').value.replace(/^\s+|\s+$/g, ''), c, ic;
+    if (!n) { $('g_err').textContent = 'Give the group a name.'; return; }
+    if (n !== old) {
+      if (S.groups.indexOf(n) > -1) { $('g_err').textContent = 'A group with that name already exists.'; return; }
+      S.groups[S.groups.indexOf(old)] = n;
+      if (S.gcfg[old]) { S.gcfg[n] = S.gcfg[old]; delete S.gcfg[old]; }
+      if (S.order['g:' + old] !== undefined) { S.order['g:' + n] = S.order['g:' + old]; delete S.order['g:' + old]; }
+      Object.keys(S.cards).forEach(function (id) { if (S.cards[id].group === old) { S.cards[id].group = n; } });
+    }
+    c = S.gcfg[n] || {};
+    c.mode = $('g_mode').value; c.w = parseInt($('g_w').value, 10);
+    ic = $('g_icon').value.replace(/\s+/g, '');
+    if (ic) { c.icon = ic; } else { delete c.icon; }
+    S.gcfg[n] = c;
+    saveAll(); closeGroupEd(); render();
+  }
+  function deleteGroupEd() {                       // two taps, so it can't happen by accident
+    var name = S.gedit, b = $('g_del');
+    if (!S.gdelArm) {
+      S.gdelArm = true; b.textContent = 'Tap again to delete'; b.className = 'btn armed';
+      S.gdelT = setTimeout(function () { S.gdelArm = false; b.textContent = 'Delete group'; b.className = 'btn'; }, 3500);
+      return;
+    }
     S.groups.splice(S.groups.indexOf(name), 1);
     delete S.gcfg[name]; delete S.order['g:' + name];
     Object.keys(S.cards).forEach(function (id) {
-      if (S.cards[id].group === name) { delete S.cards[id].group; if (!Object.keys(S.cards[id]).length) { delete S.cards[id]; } }
+      if (S.cards[id].group === name) { if ($('g_hide').checked) { setHidden(id, true); } delete S.cards[id].group; if (!Object.keys(S.cards[id]).length) { delete S.cards[id]; } }
     });
-    saveAll(); render();
+    saveAll(); closeGroupEd(); render();
   }
 
   /* ---------- Home Assistant (Material Design) icons ---------- */
@@ -1726,7 +1769,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       S.chk = false;
       var m = /var BUILD = '([^']+)'/.exec(t);
       if (!m || m[1] === BUILD) { return; }
-      var open = S.edit || $('cfg').style.display === 'block' || $('ced').style.display === 'block' || $('bk').style.display === 'block' || $('calm').style.display === 'block' || $('cev').style.display === 'block' || $('calsel').style.display === 'block' || $('live').style.display === 'block' || $('det').style.display === 'block' || $('grp').style.display === 'block';
+      var open = S.edit || $('cfg').style.display === 'block' || $('ced').style.display === 'block' || $('bk').style.display === 'block' || $('calm').style.display === 'block' || $('cev').style.display === 'block' || $('calsel').style.display === 'block' || $('live').style.display === 'block' || $('det').style.display === 'block' || $('grp').style.display === 'block' || $('ged').style.display === 'block';
       var tried = null;
       try { tried = sessionStorage.getItem('ha_upd'); } catch (e) {}
       if (!open && tried !== m[1]) {
@@ -1793,6 +1836,11 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   wireHold();
   $('det_close').addEventListener('click', closeDet);
   $('grp_close').addEventListener('click', closeGrp);
+  $('g_mode').addEventListener('change', groupEdToggle);
+  $('g_save').addEventListener('click', saveGroupEd);
+  $('g_cancel').addEventListener('click', closeGroupEd);
+  $('g_del').addEventListener('click', deleteGroupEd);
+  $('g_icon').addEventListener('input', function () { iconSearch('g_icon', 'ic_res3'); });
   $('live_close').addEventListener('click', closeLive);
   $('live_mode').addEventListener('click', function () { if (S.live) { S.live.note = ''; S.live.tried = {}; startLive(S.live.mode === 'hls' ? 'mjpeg' : 'hls'); } });
   $('live').addEventListener('touchstart', liveTouched, false);
@@ -1825,7 +1873,16 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       saveAll(); applyLayout(); render();
     });
   });
-  $('rstlay').addEventListener('click', function () { if (confirm('Reset size, text, theme and accent to defaults?')) { S.layout = defLayout(); saveAll(); applyLayout(); render(); } });
+  $('rstlay').addEventListener('click', function () {      // two taps instead of a browser pop-up
+    var b = this;
+    if (!S.rstArm) {
+      S.rstArm = true; b.textContent = 'Tap again to reset';
+      clearTimeout(S.rstT); S.rstT = setTimeout(function () { S.rstArm = false; b.textContent = 'Reset layout'; }, 3500);
+      return;
+    }
+    S.rstArm = false; clearTimeout(S.rstT); b.textContent = 'Reset layout';
+    S.layout = defLayout(); saveAll(); applyLayout(); render();
+  });
   $('c_group').addEventListener('change', function () { var n = this.value === '__new'; $('c_gnew').style.display = n ? 'block' : 'none'; if (n) { $('c_gnew').focus(); } });
   $('c_save').addEventListener('click', saveCard);
   $('c_cancel').addEventListener('click', function () { $('ced').style.display = 'none'; });
@@ -1836,7 +1893,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       Object.keys(S.local).forEach(function (id) { (S.local[id] ? hide : show).push(id); });
       return { layout: S.layout, cards: S.cards, order: S.order, show: show, hide: hide, groups: S.groups, gcfg: S.gcfg };
     }()));
-    $('bk').style.display = 'block';
+    $('bk_err').textContent = ''; $('bk').style.display = 'block';
   });
   $('bk_close').addEventListener('click', function () { $('bk').style.display = 'none'; });
   $('bk_apply').addEventListener('click', function () {
@@ -1852,7 +1909,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
         S.local = o.hidden; S.migrate = CONFIG.hideByDefault; migrateDefaults();
       }
       saveAll(); applyLayout(); render(); $('bk').style.display = 'none';
-    } catch (e) { alert('That doesn\u2019t look like a valid backup.'); }
+    } catch (e) { $('bk_err').textContent = 'That doesn\u2019t look like a valid backup.'; }
   });
   var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (!S.drag) { render(); } }, 250); });
   $('c_icon').addEventListener('input', function () { iconSearch('c_icon', 'ic_res'); });
