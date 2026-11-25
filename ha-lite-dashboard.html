@@ -86,14 +86,14 @@ select{-webkit-appearance:none;appearance:none;width:100%;font-size:15px;padding
 .tile.big .ic{font-size:2.6em}
 .tile.big .nm{font-size:1.2em}
 .tile.big .st{font-size:.95em}
-.gbox{min-width:0;background:rgba(255,255,255,.035);border:1px solid var(--panel2);border-radius:16px;padding:10px}
+.gbox{align-self:stretch;min-width:0;background:rgba(255,255,255,.035);border:1px solid var(--panel2);border-radius:16px;padding:10px}
 html.light .gbox{background:rgba(0,0,0,.03)}
 .gh{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-align:center;-webkit-align-items:center;align-items:center;margin:0 0 8px;font-weight:600;font-size:1.05em}
 .gh select{width:auto;margin-left:6px;font-size:13px;padding:5px 24px 5px 8px}
 .gin{display:grid;grid-gap:10px}
 .gempty{grid-column:1 / -1;color:var(--muted);font-size:.85em;padding:14px 4px}
 .gh .gn{-webkit-box-flex:1;-webkit-flex:1;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.gh button{border:0;border-radius:8px;background:var(--panel2);color:var(--text);font-size:13px;padding:5px 9px;margin-left:6px;-webkit-appearance:none}
+.gh button,.sh button{border:0;border-radius:8px;background:var(--panel2);color:var(--text);font-size:13px;padding:5px 9px;margin-left:6px;-webkit-appearance:none}
 #upd{display:none;background:var(--on);color:var(--ink);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:15px;-webkit-box-align:center;-webkit-align-items:center;align-items:center}
 #upd span{-webkit-box-flex:1;-webkit-flex:1;flex:1}
 #upd .btn{background:var(--ink);color:var(--on);font-weight:600}
@@ -137,7 +137,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 .tile .ml+input{margin-top:2px}
 .tile,.gh{-webkit-touch-callout:none}
 .gh{-webkit-user-select:none;user-select:none}
-.tile.dragsrc,.gbox.dragsrc{opacity:.25}
+.tile.dragsrc,.gbox.dragsrc,.stk.dragsrc{opacity:.25}
 .gh.dragc{background:var(--panel2);padding:8px 12px;border-radius:12px}
 .dragc{position:fixed;left:0;top:0;margin:0;z-index:50;pointer-events:none;opacity:.92;box-shadow:0 8px 20px rgba(0,0,0,.45);-webkit-transform:translate3d(0,0,0)}
 .dmark{position:absolute;z-index:40;display:none;background:var(--on);border-radius:3px;pointer-events:none}
@@ -182,8 +182,18 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 .tile.on .segs span.a,.tile.on .segs .bar i{background:var(--ink)}
 #grp_b{display:grid;grid-gap:10px;font-size:16px;margin-top:6px}
 .gn small{font-weight:400;color:var(--muted);margin-left:6px}
-#g_err{color:#e5604d;font-size:14px;margin:8px 0 0}
-#g_del.armed{background:#e5604d;color:#fff}
+#g_err,#s_err{color:#e5604d;font-size:14px;margin:8px 0 0}
+#g_del.armed,#s_del.armed{background:#e5604d;color:#fff}
+/* stacks: a column of groups and cards that stays together */
+.stk{min-width:0;align-self:stretch;display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-orient:vertical;-webkit-flex-direction:column;flex-direction:column}
+.stk.ed{border:1px dashed var(--muted);border-radius:16px;padding:8px}
+.sh{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-align:center;-webkit-align-items:center;align-items:center;margin:0 0 8px;font-size:.9em;font-weight:600;color:var(--muted)}
+.sh .sn{-webkit-box-flex:1;-webkit-flex:1;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sh .sn small{font-weight:400}
+.sh.dragc{background:var(--panel2);padding:8px 12px;border-radius:12px}
+.sin{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-orient:vertical;-webkit-flex-direction:column;flex-direction:column;-webkit-box-flex:1;-webkit-flex:1 1 auto;flex:1 1 auto;min-width:0}
+.sin>*{-webkit-box-flex:1;-webkit-flex:1 1 auto;flex:1 1 auto;min-width:0}
+.sin>*+*{margin-top:10px}
 </style>
 </head>
 <body>
@@ -206,6 +216,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     <summary>Cards <small>search, show and hide</small></summary>
     <div class="r"><input id="q" type="search" placeholder="Search entities" autocapitalize="off" autocorrect="off"><button class="btn" id="hideall">Hide all</button><button class="btn" id="showall">Show all</button></div>
     <label class="chk"><input type="checkbox" id="onlyshown"> Only list shown cards</label>
+    <div class="r2"><button class="btn" id="addstack">Add stack</button> <span style="font-size:12px;color:var(--muted)">lines groups and cards up in one column</span></div>
     <div class="lay">
       <label>Sensors on All tab<select id="l_allsens"><option value="1">Show</option><option value="0">Hide</option></select></label>
     </div>
@@ -292,6 +303,8 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   <label for="c_group">Group</label>
   <select id="c_group"></select>
   <input id="c_gnew" type="text" maxlength="40" placeholder="New group name" style="display:none;margin-top:8px">
+  <div id="c_swrap"><label for="c_stack">Stack (used when the card is not in a group)</label>
+  <select id="c_stack"></select></div>
   <label for="c_trig" id="c_trig_l" style="display:none">Open the live view when this triggers (doorbell, motion)</label>
   <select id="c_trig" style="display:none"></select>
   <label for="c_modes" id="c_modes_l">Mode controls</label>
@@ -330,10 +343,22 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 </div></div>
 
 <div id="dim"></div>
+<div id="sed" class="modal"><div class="box">
+  <h2>Edit stack</h2>
+  <p>A stack lines its groups and cards up in one column, so they stay together whatever the screen shape.</p>
+  <label for="s_name">Name</label>
+  <input id="s_name" type="text" maxlength="40" autocorrect="off">
+  <label for="s_w">Width</label>
+  <select id="s_w"><option value="1">1 column</option><option value="2">2 columns</option><option value="3">3 columns</option><option value="4">4 columns</option><option value="0">Full row</option></select>
+  <p id="s_err"></p>
+  <div class="row"><button class="btn" id="s_del">Delete stack</button><button class="btn" id="s_cancel">Cancel</button><button class="btn go" id="s_save">Save</button></div>
+</div></div>
 <div id="ged" class="modal"><div class="box">
   <h2>Edit group</h2>
   <label for="g_name">Name</label>
   <input id="g_name" type="text" maxlength="40" autocorrect="off">
+  <div id="g_swrap"><label for="g_stack">Stack</label>
+  <select id="g_stack"></select></div>
   <label for="g_mode">Display</label>
   <select id="g_mode"><option value="box">Box (cards shown on the page)</option><option value="tile">Tile (opens a pop-up)</option></select>
   <div id="g_wrap">
@@ -367,7 +392,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 (function () {
   'use strict';
   // Bump this whenever the file is edited. Open copies of the page compare it with the server's copy and offer to update.
-  var BUILD = '2026-11-03x';
+  var BUILD = '2026-11-03y';
   var POLL_MS = 5000;
   // ---- Defaults for every device. Edit these, or use the Edit button on the page for per-device changes. ----
   var CONFIG = {
@@ -387,7 +412,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     // To work offline, self-host the @mdi/font package and use e.g. '/local/mdi/css/materialdesignicons.min.css'
     mdiCss:         'https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css'
   };
-  var S = { cam: {}, live: null, gcfg: {}, curCols: 1, cals: [], evMain: null, evMonth: {}, calHidden: {}, calInit: false, calDay: '', lastMin: '', mY: 0, mM: 0, mSel: null, groups: [], cards: {}, order: {}, layout: defLayout(), editId: null, dt: null, cols: 1, edit: false, local: {}, shownIds: [], q: '', url: '', token: '', states: {}, filter: 'all', busy: false, timer: null, drag: false };
+  var S = { stacks: [], scfg: {}, cam: {}, live: null, gcfg: {}, curCols: 1, cals: [], evMain: null, evMonth: {}, calHidden: {}, calInit: false, calDay: '', lastMin: '', mY: 0, mM: 0, mSel: null, groups: [], cards: {}, order: {}, layout: defLayout(), editId: null, dt: null, cols: 1, edit: false, local: {}, shownIds: [], q: '', url: '', token: '', states: {}, filter: 'all', busy: false, timer: null, drag: false };
 
   // domain -> label, icon, how a tap behaves
   var DOM = {
@@ -654,12 +679,16 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     if (!a.card !== !b.card) { return a.card ? -1 : 1; }
     return a.card ? cmp(a.card, b.card) : a.gi - b.gi;
   }
+  function stackOf(id) { var c = S.cards[id]; return c && c.stack && S.stacks.indexOf(c.stack) > -1 ? c.stack : ''; }
+  function gstack(name) { var c = S.gcfg[name]; return c && c.stack && S.stacks.indexOf(c.stack) > -1 ? c.stack : ''; }
+  function stackW(sid) { var c = S.scfg[sid]; return c && c.w !== undefined ? c.w : 1; }                 // columns; 0 = full row
+  function stackName(sid) { var c = S.scfg[sid]; return (c && c.name) || 'Stack'; }
   function gwidth(name) { var c = S.gcfg[name]; return c && c.w !== undefined ? c.w : 2; }   // columns; 0 = full row
-  function makeGroupBox(name, items) {
-    var w = gwidth(name), span = w === 0 ? S.cols : Math.min(w, S.cols);
+  function makeGroupBox(name, items, stackSpan) {
+    var inStack = stackSpan !== undefined, w = gwidth(name), span = inStack ? stackSpan : (w === 0 ? S.cols : Math.min(w, S.cols));
     var box = el('div', 'gbox' + ((S.gcfg[name] || {}).mode === 'tile' ? ' astile' : ''));
     box.setAttribute('data-g', name);
-    box.style.gridColumn = span >= S.cols ? '1 / -1' : 'span ' + span;
+    if (!inStack) { box.style.gridColumn = span >= S.cols ? '1 / -1' : 'span ' + span; }
     box.appendChild(groupHeader(name));
     var inner = el('div', 'gin'), prev = S.curCols;
     inner.style.gridTemplateColumns = 'repeat(' + span + ',minmax(0,1fr))';
@@ -667,6 +696,31 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     items.forEach(function (s) { inner.appendChild(makeTile(s)); S.shownIds.push(s.entity_id); });
     S.curCols = prev;
     if (!items.length) { inner.appendChild(el('div', 'gempty', S.edit ? 'Empty. Drag cards here.' : '')); }
+    box.appendChild(inner);
+    return box;
+  }
+
+  function stackHeader(sid) {
+    var h = el('div', 'sh'), sp = el('span', 'sn', stackName(sid)), eb = el('button', '', 'Edit');
+    sp.appendChild(el('small', '', ' \u00B7 stack'));
+    h.appendChild(sp);
+    eb.addEventListener('click', function () { openStackEd(sid); });
+    h.appendChild(eb);
+    return h;
+  }
+  function makeStack(sid, members, byG) {
+    var w = stackW(sid), span = w === 0 ? S.cols : Math.min(w, S.cols), box = el('div', 'stk' + (S.edit ? ' ed' : '')), inner = el('div', 'sin'), prev = S.curCols;
+    box.setAttribute('data-s', sid);
+    box.style.gridColumn = span >= S.cols ? '1 / -1' : 'span ' + span;
+    if (S.edit) { box.appendChild(stackHeader(sid)); }
+    S.curCols = 1;
+    members.forEach(function (u) {
+      if (u.card) { inner.appendChild(makeTile(u.card)); S.shownIds.push(u.k); }
+      else if (!S.edit && (S.gcfg[u.g] || {}).mode === 'tile') { inner.appendChild(makeGroupTile(u.g, byG[u.g])); }
+      else { inner.appendChild(makeGroupBox(u.g, byG[u.g], span)); }
+    });
+    S.curCols = prev;
+    if (!members.length) { inner.appendChild(el('div', 'gempty', S.edit ? 'Empty. Drag groups or cards here.' : '')); }
     box.appendChild(inner);
     return box;
   }
@@ -716,15 +770,27 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     S.cols = Math.max(1, Math.floor((gridW + 10) / (SIZES[S.layout.size] + 10)));
     S.shownIds = [];
     S.curCols = S.cols;
-    var gi = {}, byG = {}, loose = [];
+    var gi = {}, byG = {}, byS = {}, loose = [];
     S.groups.forEach(function (g, i) { gi[g] = i; byG[g] = []; });
-    list.forEach(function (s) { var g = groupOf(s.entity_id); if (g) { byG[g].push(s); } else { loose.push(s); } });
+    S.stacks.forEach(function (sid) { byS[sid] = []; });
+    list.forEach(function (s) {
+      var g = groupOf(s.entity_id), sk = g ? '' : stackOf(s.entity_id);
+      if (g) { byG[g].push(s); }
+      else if (sk) { byS[sk].push({ k: s.entity_id, o: S.order[s.entity_id], card: s }); }
+      else { loose.push(s); }
+    });
     var showEmpty = S.edit && !q && S.filter === 'all';
     var units = loose.map(function (s) { return { k: s.entity_id, o: S.order[s.entity_id], card: s }; });
-    S.groups.forEach(function (g) { if (byG[g].length || showEmpty) { units.push({ k: 'g:' + g, o: S.order['g:' + g], g: g, gi: gi[g] }); } });
+    S.groups.forEach(function (g) {
+      if (!byG[g].length && !showEmpty) { return; }
+      var u = { k: 'g:' + g, o: S.order['g:' + g], g: g, gi: gi[g] }, sk = gstack(g);
+      if (sk) { byS[sk].push(u); } else { units.push(u); }
+    });
+    S.stacks.forEach(function (sid, i) { if (byS[sid].length || showEmpty) { units.push({ k: 's:' + sid, o: S.order['s:' + sid], stack: sid, gi: 1000 + i }); } });
     units.sort(unitCmp);
     units.forEach(function (u) {
       if (u.card) { grid.appendChild(makeTile(u.card)); S.shownIds.push(u.k); }
+      else if (u.stack) { grid.appendChild(makeStack(u.stack, byS[u.stack].sort(unitCmp), byG)); }
       else if (!S.edit && (S.gcfg[u.g] || {}).mode === 'tile') { grid.appendChild(makeGroupTile(u.g, byG[u.g])); }
       else { grid.appendChild(makeGroupBox(u.g, byG[u.g])); }
     });
@@ -754,7 +820,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   function defLayout() { return { size: 'm', text: 'm', theme: 'dark', accent: 'amber', clock: true, icons: true, iconset: 'mdi', allsens: true, cal: true, wk: 1, camrate: 5, camauto: true, camhold: 45, dim: false, dimfrom: '22:00', dimto: '06:30', dimlvl: 85, dimwake: 30, dimEnt: '', wakeEnt: '', style: 'std', glname: 'show' }; }
   function card(id) { return S.cards[id] || {}; }
   function loadJ(k, def) { try { return JSON.parse(store(k)) || def; } catch (e) { return def; } }
-  function saveAll() { store('ha_layout', JSON.stringify(S.layout)); store('ha_cards', JSON.stringify(S.cards)); store('ha_order', JSON.stringify(S.order)); store('ha_groups', JSON.stringify(S.groups)); store('ha_gcfg', JSON.stringify(S.gcfg)); store('ha_hidden', JSON.stringify(S.local)); }
+  function saveAll() { store('ha_layout', JSON.stringify(S.layout)); store('ha_cards', JSON.stringify(S.cards)); store('ha_order', JSON.stringify(S.order)); store('ha_groups', JSON.stringify(S.groups)); store('ha_gcfg', JSON.stringify(S.gcfg)); store('ha_stacks', JSON.stringify(S.stacks)); store('ha_scfg', JSON.stringify(S.scfg)); store('ha_hidden', JSON.stringify(S.local)); }
   function pretty(o) { o = String(o).replace(/_/g, ' '); return o.charAt(0).toUpperCase() + o.slice(1); }
 
   function applyLayout() {
@@ -829,6 +895,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     $('c_wide').value = c.size === 'big' ? '2' : (c.size === 'wide' || c.wide || (d === 'camera' && !c.size)) ? '1' : '0'; $('c_modes').value = c.modes || 'drop';
     $('c_vis').value = isHidden(id) ? '1' : '0';
     fillGroups(groupOf(id));
+    fillStackSelect($('c_stack'), stackOf(id)); $('c_swrap').style.display = S.stacks.length ? 'block' : 'none';
     $('c_gname').value = c.gname || '';
     var isCam = d === 'camera';
     $('c_trig').style.display = isCam ? 'block' : 'none'; $('c_trig_l').style.display = isCam ? 'block' : 'none';
@@ -857,6 +924,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       if (gn) { if (S.groups.indexOf(gn) < 0) { S.groups.push(gn); } g = gn; }
     }
     if (g) { c.group = g; }
+    if ($('c_stack').value && !g) { c.stack = $('c_stack').value; }
     if ($('c_gname').value) { c.gname = $('c_gname').value; }
     var tr = $('c_trig').value;
     if (tr && dom(id) === 'camera') { c.trig = tr; }
@@ -1266,7 +1334,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   function hasCls(n, c) { return (' ' + n.className + ' ').indexOf(' ' + c + ' ') > -1; }
   function dragItem(n) {
     var g = $('grid');
-    while (n && n !== g) { if (n.className && (hasCls(n, 'tile') || hasCls(n, 'gh'))) { return n; } n = n.parentNode; }
+    while (n && n !== g) { if (n.className && (hasCls(n, 'tile') || hasCls(n, 'gh') || hasCls(n, 'sh'))) { return n; } n = n.parentNode; }
     return null;
   }
   function pressStart(target, x, y, mouse) {
@@ -1274,7 +1342,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     var it = dragItem(target), n = target;
     if (!it) { return; }
     while (n && n !== it) { if (n.tagName === 'BUTTON' || n.tagName === 'SELECT' || hasCls(n, 'badge')) { return; } n = n.parentNode; }
-    DR = { it: it, kind: hasCls(it, 'gh') ? 'group' : 'card', mouse: !!mouse, x0: x, y0: y, x: x, y: y, on: false, dir: 0, raf: 0, tgt: null };
+    DR = { it: it, kind: hasCls(it, 'gh') ? 'group' : (hasCls(it, 'sh') ? 'stack' : 'card'), mouse: !!mouse, x0: x, y0: y, x: x, y: y, on: false, dir: 0, raf: 0, tgt: null };
     if (!mouse) { DR.timer = setTimeout(dragBegin, 280); }   // finger: press and hold (so scrolling still works). Mouse: just drag.
   }
   function pressMove(x, y, e) {
@@ -1288,25 +1356,38 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     if (e && e.cancelable) { e.preventDefault(); }
     dragUpdate();
   }
+  // measurements of one card, or of one group box together with its cards
+  function boxOf(k, sx, sy) {
+    var r = k.getBoundingClientRect(), u = { el: k, l: r.left + sx, t: r.top + sy, r: r.right + sx, b: r.bottom + sy }, tl, j, hd;
+    if (hasCls(k, 'gbox')) {
+      u.box = true; u.g = k.getAttribute('data-g'); u.tiles = [];
+      hd = k.children[0].getBoundingClientRect(); u.hb = hd.bottom + sy;
+      tl = k.children[1].children;
+      for (j = 0; j < tl.length; j++) {
+        if (hasCls(tl[j], 'tile')) { r = tl[j].getBoundingClientRect(); u.tiles.push({ el: tl[j], id: tl[j].getAttribute('data-id'), l: r.left + sx, t: r.top + sy, r: r.right + sx, b: r.bottom + sy }); }
+      }
+    } else { u.id = k.getAttribute('data-id'); }
+    return u;
+  }
+  function unitKey(u) { return u.stack ? 's:' + u.sid : (u.box ? 'g:' + u.g : u.id); }
+  function inside(u, px, py) { return px >= u.l && px <= u.r && py >= u.t && py <= u.b; }
   function dragBegin() {
     var d = DR; if (!d || d.on) { return; }
     d.on = true; S.drag = true;
-    var g = $('grid'), kids = g.children, sx = window.pageXOffset, sy = window.pageYOffset, i, j, r, k, u, tl, hd;
+    var g = $('grid'), kids = g.children, sx = window.pageXOffset, sy = window.pageYOffset, i, j, r, k, u, inner;
     d.units = [];
     for (i = 0; i < kids.length; i++) {
-      k = kids[i]; r = k.getBoundingClientRect();
-      u = { el: k, l: r.left + sx, t: r.top + sy, r: r.right + sx, b: r.bottom + sy };
-      if (hasCls(k, 'gbox')) {
-        u.box = true; u.g = k.getAttribute('data-g'); u.tiles = [];
-        hd = k.children[0].getBoundingClientRect(); u.hb = hd.bottom + sy;
-        tl = k.children[1].children;
-        for (j = 0; j < tl.length; j++) {
-          if (hasCls(tl[j], 'tile')) { r = tl[j].getBoundingClientRect(); u.tiles.push({ el: tl[j], id: tl[j].getAttribute('data-id'), l: r.left + sx, t: r.top + sy, r: r.right + sx, b: r.bottom + sy }); }
-        }
-      } else { u.id = k.getAttribute('data-id'); }
+      k = kids[i];
+      if (hasCls(k, 'stk')) {
+        r = k.getBoundingClientRect();
+        u = { el: k, stack: true, sid: k.getAttribute('data-s'), l: r.left + sx, t: r.top + sy, r: r.right + sx, b: r.bottom + sy, members: [] };
+        u.hb = k.children[0].getBoundingClientRect().bottom + sy;
+        inner = k.children[1].children;
+        for (j = 0; j < inner.length; j++) { if (hasCls(inner[j], 'gbox') || hasCls(inner[j], 'tile')) { u.members.push(boxOf(inner[j], sx, sy)); } }
+      } else { u = boxOf(k, sx, sy); }
       d.units.push(u);
     }
-    d.src = d.kind === 'group' ? d.it.parentNode : d.it;
+    d.src = d.kind === 'card' ? d.it : d.it.parentNode;
     r = d.it.getBoundingClientRect(); d.offX = d.x0 - r.left; d.offY = d.y0 - r.top;
     var c = d.it.cloneNode(true);
     c.className += ' dragc'; c.style.width = r.width + 'px'; c.style.height = r.height + 'px';
@@ -1319,7 +1400,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     var dx = px < o.l ? o.l - px : (px > o.r ? px - o.r : 0), dy = py < o.t ? o.t - py : (py > o.b ? py - o.b : 0);
     return dx * dx + dy * dy;
   }
-  // nearest card or group box in the main flow; the marker sits on its left or right edge
+  // nearest card, group box or stack in the main flow; the marker sits on its left or right edge
   function flowTarget(px, py, skipEl) {
     var d = DR, best = null, bd = 1e12, i, o, dist;
     for (i = 0; i < d.units.length; i++) {
@@ -1329,24 +1410,48 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     }
     if (!best) { return null; }
     var after = px > (best.l + best.r) / 2;
-    return { top: true, key: best.box ? 'g:' + best.g : best.id, after: after, mark: { l: after ? best.r + 3 : best.l - 7, t: best.t, w: 4, h: best.b - best.t } };
+    return { top: true, key: unitKey(best), after: after, mark: { l: after ? best.r + 3 : best.l - 7, t: best.t, w: 4, h: best.b - best.t } };
+  }
+  // inside a stack: members sit one above the other, so before / after is decided by height
+  function stackTarget(u, px, py, skipEl) {
+    var best = null, bd = 1e12, i, o, dist, after;
+    for (i = 0; i < u.members.length; i++) {
+      o = u.members[i]; if (o.el === skipEl) { continue; }
+      dist = rectDist(o, px, py);
+      if (dist < bd) { bd = dist; best = o; }
+    }
+    if (!best || py <= u.hb) { return { stack: u.sid, start: true, mark: { l: u.l + 8, t: u.hb + 1, w: u.r - u.l - 16, h: 4 } }; }
+    after = py > (best.t + best.b) / 2;
+    return { stack: u.sid, key: unitKey(best), after: after, mark: { l: best.l, t: after ? best.b + 3 : best.t - 7, w: best.r - best.l, h: 4 } };
+  }
+  function inGroupTarget(u, px, py) {
+    var d = DR, best = null, bd = 1e12, j, o, dist, after;
+    for (j = 0; j < u.tiles.length; j++) {
+      o = u.tiles[j]; if (o.el === d.it) { continue; }
+      dist = rectDist(o, px, py);
+      if (dist < bd) { bd = dist; best = o; }
+    }
+    if (!best || py <= u.hb) { return { g: u.g, start: true, mark: { l: u.l + 10, t: u.hb + 1, w: u.r - u.l - 20, h: 4 } }; }
+    after = px > (best.l + best.r) / 2;
+    return { g: u.g, id: best.id, after: after, mark: { l: after ? best.r + 3 : best.l - 7, t: best.t, w: 4, h: best.b - best.t } };
   }
   function cardTarget(px, py) {
-    var d = DR, i, j, u, o, best, bd, dist;
+    var d = DR, i, j, u, m;
     for (i = 0; i < d.units.length; i++) {
       u = d.units[i];
-      if (!u.box || px < u.l || px > u.r || py < u.t || py > u.b) { continue; }
-      best = null; bd = 1e12;                                  // the finger is inside this group
-      for (j = 0; j < u.tiles.length; j++) {
-        o = u.tiles[j]; if (o.el === d.it) { continue; }
-        dist = rectDist(o, px, py);
-        if (dist < bd) { bd = dist; best = o; }
+      if (!inside(u, px, py)) { continue; }
+      if (u.box) { return inGroupTarget(u, px, py); }
+      if (u.stack) {
+        for (j = 0; j < u.members.length; j++) { m = u.members[j]; if (m.box && inside(m, px, py)) { return inGroupTarget(m, px, py); } }
+        return stackTarget(u, px, py, d.it);
       }
-      if (!best || py <= u.hb) { return { g: u.g, start: true, mark: { l: u.l + 10, t: u.hb + 1, w: u.r - u.l - 20, h: 4 } }; }
-      var after = px > (best.l + best.r) / 2;
-      return { g: u.g, id: best.id, after: after, mark: { l: after ? best.r + 3 : best.l - 7, t: best.t, w: 4, h: best.b - best.t } };
     }
     return flowTarget(px, py, d.it);
+  }
+  function groupDragTarget(px, py) {
+    var d = DR, i, u;
+    for (i = 0; i < d.units.length; i++) { u = d.units[i]; if (u.stack && inside(u, px, py)) { return stackTarget(u, px, py, d.src); } }
+    return flowTarget(px, py, d.src);
   }
   function dragUpdate() {
     var d = DR; if (!d || !d.on) { return; }
@@ -1355,7 +1460,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     d.dir = d.y < 70 ? -1 : (d.y > window.innerHeight - 70 ? 1 : 0);
     if (d.dir && !d.raf) { d.raf = requestAnimationFrame(dragScroll); }
     var px = d.x + window.pageXOffset, py = d.y + window.pageYOffset;
-    d.tgt = d.kind === 'card' ? cardTarget(px, py) : flowTarget(px, py, d.src);
+    d.tgt = d.kind === 'card' ? cardTarget(px, py) : (d.kind === 'group' ? groupDragTarget(px, py) : flowTarget(px, py, d.src));
     var m = d.mark.style, t = d.tgt;
     if (!t) { m.display = 'none'; return; }
     m.display = 'block'; m.left = t.mark.l + 'px'; m.top = t.mark.t + 'px'; m.width = t.mark.w + 'px'; m.height = t.mark.h + 'px';
@@ -1367,42 +1472,65 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     window.scrollBy(0, d.dir * 12);
     dragUpdate();
   }
-  // give every card on the dashboard (and every group) an order number, in the sequence given
+  // give every card on the dashboard (and every group and stack) an order number, in the sequence given
   function setUnitOrder(keys) {
     var k = 0;
     keys.forEach(function (key) {
-      if (key.indexOf('g:') !== 0 && isHidden(key)) { return; }
+      if (key.indexOf('g:') !== 0 && key.indexOf('s:') !== 0 && isHidden(key)) { return; }
       S.order[key] = k; k += 10;
     });
   }
   function flowKeys(d, skipKey) {
     var keys = [];
-    d.units.forEach(function (u) { var key = u.box ? 'g:' + u.g : u.id; if (key !== skipKey) { keys.push(key); } });
+    d.units.forEach(function (u) { var key = unitKey(u); if (key !== skipKey) { keys.push(key); } });
     return keys;
   }
+  function stackKeys(d, sid, skipKey) {
+    var keys = [];
+    d.units.forEach(function (u) { if (u.stack && u.sid === sid) { u.members.forEach(function (m) { var key = unitKey(m); if (key !== skipKey) { keys.push(key); } }); } });
+    return keys;
+  }
+  function boxUnit(d, g) {
+    var i, j, u;
+    for (i = 0; i < d.units.length; i++) {
+      u = d.units[i];
+      if (u.box && u.g === g) { return u; }
+      if (u.stack) { for (j = 0; j < u.members.length; j++) { if (u.members[j].box && u.members[j].g === g) { return u.members[j]; } } }
+    }
+    return null;
+  }
+  function placeKey(keys, t, key) { keys.splice(t.start ? 0 : keys.indexOf(t.key) + (t.after ? 1 : 0), 0, key); }
   function dropCard(d) {
-    var t = d.tgt, id = d.it.getAttribute('data-id'), c = S.cards[id] || {}, keys, list, i, k;
-    if (t.top) {
-      keys = flowKeys(d, id);
-      keys.splice(keys.indexOf(t.key) + (t.after ? 1 : 0), 0, id);
-      delete c.group;
+    var t = d.tgt, id = d.it.getAttribute('data-id'), c = S.cards[id] || {}, keys, list = [], k = 0, bu;
+    if (t.g) {
+      bu = boxUnit(d, t.g);
+      if (bu) { bu.tiles.forEach(function (x) { if (x.id !== id) { list.push(x.id); } }); }
+      list.splice(t.start ? 0 : list.indexOf(t.id) + (t.after ? 1 : 0), 0, id);
+      c.group = t.g; delete c.stack;
+      list.forEach(function (x) { if (!isHidden(x)) { S.order[x] = k; k += 10; } });
+    } else if (t.stack) {
+      keys = stackKeys(d, t.stack, id); placeKey(keys, t, id);
+      delete c.group; c.stack = t.stack;
       setUnitOrder(keys);
     } else {
-      list = [];
-      for (i = 0; i < d.units.length; i++) {
-        if (d.units[i].box && d.units[i].g === t.g) { d.units[i].tiles.forEach(function (x) { if (x.id !== id) { list.push(x.id); } }); }
-      }
-      list.splice(t.start ? 0 : list.indexOf(t.id) + (t.after ? 1 : 0), 0, id);
-      c.group = t.g;
-      k = 0;
-      list.forEach(function (x) { if (!isHidden(x)) { S.order[x] = k; k += 10; } });
+      keys = flowKeys(d, id); placeKey(keys, t, id);
+      delete c.group; delete c.stack;
+      setUnitOrder(keys);
     }
     if (Object.keys(c).length) { S.cards[id] = c; } else { delete S.cards[id]; }
     saveAll();
   }
   function dropGroup(d) {
-    var g = d.it.getAttribute('data-g'), keys = flowKeys(d, 'g:' + g);
-    keys.splice(keys.indexOf(d.tgt.key) + (d.tgt.after ? 1 : 0), 0, 'g:' + g);
+    var g = d.it.getAttribute('data-g'), t = d.tgt, c = S.gcfg[g] || {}, keys;
+    if (t.stack) { keys = stackKeys(d, t.stack, 'g:' + g); c.stack = t.stack; } else { keys = flowKeys(d, 'g:' + g); delete c.stack; }
+    placeKey(keys, t, 'g:' + g);
+    S.gcfg[g] = c;
+    setUnitOrder(keys);
+    saveAll();
+  }
+  function dropStack(d) {
+    var keys = flowKeys(d, 's:' + d.it.parentNode.getAttribute('data-s'));
+    placeKey(keys, d.tgt, 's:' + d.it.parentNode.getAttribute('data-s'));
     setUnitOrder(keys);
     saveAll();
   }
@@ -1414,7 +1542,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     if (d.raf) { cancelAnimationFrame(d.raf); }
     document.body.removeChild(d.clone); document.body.removeChild(d.mark);
     S.drag = false; S.noClick = true; setTimeout(function () { S.noClick = false; }, 450);
-    if (apply && d.tgt) { if (d.kind === 'card') { dropCard(d); } else { dropGroup(d); } }
+    if (apply && d.tgt) { if (d.kind === 'card') { dropCard(d); } else if (d.kind === 'group') { dropGroup(d); } else { dropStack(d); } }
     render();
   }
   function wireDrag() {
@@ -1458,7 +1586,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   }
   function groupEdToggle() {
     var t = $('g_mode').value === 'tile';
-    $('g_wrap').style.display = t ? 'none' : 'block'; $('g_iwrap').style.display = t ? 'block' : 'none';
+    $('g_wrap').style.display = (t || $('g_stack').value) ? 'none' : 'block'; $('g_iwrap').style.display = t ? 'block' : 'none';
   }
   function openGroupEd(name) {
     var c = S.gcfg[name] || {};
@@ -1466,6 +1594,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     $('g_name').value = name; $('g_mode').value = c.mode === 'tile' ? 'tile' : 'box';
     $('g_w').value = String(gwidth(name)); $('g_icon').value = c.icon || '';
     $('g_hide').checked = false;
+    fillStackSelect($('g_stack'), gstack(name)); $('g_swrap').style.display = S.stacks.length ? 'block' : 'none';
     $('ic_res3').innerHTML = ''; $('g_err').textContent = ''; $('g_del').textContent = 'Delete group'; $('g_del').className = 'btn';
     groupEdToggle();
     $('ged').style.display = 'block';
@@ -1483,6 +1612,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     }
     c = S.gcfg[n] || {};
     c.mode = $('g_mode').value; c.w = parseInt($('g_w').value, 10);
+    if ($('g_stack').value) { c.stack = $('g_stack').value; } else { delete c.stack; }
     ic = $('g_icon').value.replace(/\s+/g, '');
     if (ic) { c.icon = ic; } else { delete c.icon; }
     S.gcfg[n] = c;
@@ -1501,6 +1631,51 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       if (S.cards[id].group === name) { if ($('g_hide').checked) { setHidden(id, true); } delete S.cards[id].group; if (!Object.keys(S.cards[id]).length) { delete S.cards[id]; } }
     });
     saveAll(); closeGroupEd(); render();
+  }
+
+  /* ---------- stacks ---------- */
+  function fillStackSelect(sel, cur) {
+    var o = document.createElement('option');
+    sel.innerHTML = '';
+    o.value = ''; o.textContent = 'None'; sel.appendChild(o);
+    S.stacks.forEach(function (sid) { var op = document.createElement('option'); op.value = sid; op.textContent = stackName(sid); sel.appendChild(op); });
+    sel.value = cur || '';
+  }
+  function stackNameTaken(n, except) {
+    return S.stacks.some(function (sid) { return sid !== except && stackName(sid).toLowerCase() === n.toLowerCase(); });
+  }
+  function addStack() {
+    var n = 1, sid = 's' + new Date().getTime().toString(36);
+    while (stackNameTaken('Stack ' + n)) { n++; }
+    S.stacks.push(sid); S.scfg[sid] = { name: 'Stack ' + n, w: 1 };
+    saveAll(); render(); openStackEd(sid);
+  }
+  function openStackEd(sid) {
+    S.sedit = sid; S.sdelArm = false; clearTimeout(S.sdelT);
+    $('s_name').value = stackName(sid); $('s_w').value = String(stackW(sid));
+    $('s_err').textContent = ''; $('s_del').textContent = 'Delete stack'; $('s_del').className = 'btn';
+    $('sed').style.display = 'block';
+  }
+  function closeStackEd() { clearTimeout(S.sdelT); S.sedit = null; $('sed').style.display = 'none'; }
+  function saveStackEd() {
+    var sid = S.sedit, n = $('s_name').value.replace(/^\s+|\s+$/g, ''), c;
+    if (!n) { $('s_err').textContent = 'Give the stack a name.'; return; }
+    if (stackNameTaken(n, sid)) { $('s_err').textContent = 'A stack with that name already exists.'; return; }
+    c = S.scfg[sid] || {}; c.name = n; c.w = parseInt($('s_w').value, 10); S.scfg[sid] = c;
+    saveAll(); closeStackEd(); render();
+  }
+  function deleteStackEd() {                       // two taps; the groups and cards go back to the main page
+    var sid = S.sedit, b = $('s_del');
+    if (!S.sdelArm) {
+      S.sdelArm = true; b.textContent = 'Tap again to delete'; b.className = 'btn armed';
+      S.sdelT = setTimeout(function () { S.sdelArm = false; b.textContent = 'Delete stack'; b.className = 'btn'; }, 3500);
+      return;
+    }
+    S.stacks.splice(S.stacks.indexOf(sid), 1);
+    delete S.scfg[sid]; delete S.order['s:' + sid];
+    Object.keys(S.cards).forEach(function (id) { if (S.cards[id].stack === sid) { delete S.cards[id].stack; if (!Object.keys(S.cards[id]).length) { delete S.cards[id]; } } });
+    Object.keys(S.gcfg).forEach(function (g) { if (S.gcfg[g].stack === sid) { delete S.gcfg[g].stack; } });
+    saveAll(); closeStackEd(); render();
   }
 
   /* ---------- Home Assistant (Material Design) icons ---------- */
@@ -1769,7 +1944,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       S.chk = false;
       var m = /var BUILD = '([^']+)'/.exec(t);
       if (!m || m[1] === BUILD) { return; }
-      var open = S.edit || $('cfg').style.display === 'block' || $('ced').style.display === 'block' || $('bk').style.display === 'block' || $('calm').style.display === 'block' || $('cev').style.display === 'block' || $('calsel').style.display === 'block' || $('live').style.display === 'block' || $('det').style.display === 'block' || $('grp').style.display === 'block' || $('ged').style.display === 'block';
+      var open = S.edit || $('cfg').style.display === 'block' || $('ced').style.display === 'block' || $('bk').style.display === 'block' || $('calm').style.display === 'block' || $('cev').style.display === 'block' || $('calsel').style.display === 'block' || $('live').style.display === 'block' || $('det').style.display === 'block' || $('grp').style.display === 'block' || $('ged').style.display === 'block' || $('sed').style.display === 'block';
       var tried = null;
       try { tried = sessionStorage.getItem('ha_upd'); } catch (e) {}
       if (!open && tried !== m[1]) {
@@ -1841,6 +2016,11 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   $('g_cancel').addEventListener('click', closeGroupEd);
   $('g_del').addEventListener('click', deleteGroupEd);
   $('g_icon').addEventListener('input', function () { iconSearch('g_icon', 'ic_res3'); });
+  $('g_stack').addEventListener('change', groupEdToggle);
+  $('addstack').addEventListener('click', addStack);
+  $('s_save').addEventListener('click', saveStackEd);
+  $('s_cancel').addEventListener('click', closeStackEd);
+  $('s_del').addEventListener('click', deleteStackEd);
   $('live_close').addEventListener('click', closeLive);
   $('live_mode').addEventListener('click', function () { if (S.live) { S.live.note = ''; S.live.tried = {}; startLive(S.live.mode === 'hls' ? 'mjpeg' : 'hls'); } });
   $('live').addEventListener('touchstart', liveTouched, false);
@@ -1866,7 +2046,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   $('save').addEventListener('click', saveCfg);
   var ly = loadJ('ha_layout', {}), lk;
   for (lk in ly) { if (ly.hasOwnProperty(lk)) { S.layout[lk] = ly[lk]; } }
-  S.cards = loadJ('ha_cards', {}); S.order = loadJ('ha_order', {}); S.groups = loadJ('ha_groups', []); S.gcfg = loadJ('ha_gcfg', {}); ensureGroups();
+  S.cards = loadJ('ha_cards', {}); S.order = loadJ('ha_order', {}); S.groups = loadJ('ha_groups', []); S.gcfg = loadJ('ha_gcfg', {}); S.stacks = loadJ('ha_stacks', []); S.scfg = loadJ('ha_scfg', {}); ensureGroups();
   ['size', 'text', 'theme', 'accent', 'clock', 'icons', 'iconset', 'allsens', 'cal', 'wk', 'camrate', 'camauto', 'camhold', 'dim', 'dimfrom', 'dimto', 'dimlvl', 'dimwake', 'dimEnt', 'wakeEnt', 'style', 'glname'].forEach(function (k) {
     $('l_' + k).addEventListener('change', function () {
       S.layout[k] = (k === 'clock' || k === 'icons' || k === 'allsens' || k === 'cal' || k === 'camauto' || k === 'dim') ? this.value === '1' : ((k === 'wk' || k === 'camrate' || k === 'camhold' || k === 'dimlvl' || k === 'dimwake') ? parseInt(this.value, 10) : this.value);
@@ -1891,7 +2071,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     $('bk_t').value = JSON.stringify((function () {
       var show = [], hide = [];
       Object.keys(S.local).forEach(function (id) { (S.local[id] ? hide : show).push(id); });
-      return { layout: S.layout, cards: S.cards, order: S.order, show: show, hide: hide, groups: S.groups, gcfg: S.gcfg };
+      return { layout: S.layout, cards: S.cards, order: S.order, show: show, hide: hide, groups: S.groups, gcfg: S.gcfg, stacks: S.stacks, scfg: S.scfg };
     }()));
     $('bk_err').textContent = ''; $('bk').style.display = 'block';
   });
@@ -1901,7 +2081,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       var o = JSON.parse($('bk_t').value), k;
       S.layout = defLayout();
       for (k in (o.layout || {})) { S.layout[k] = o.layout[k]; }
-      S.cards = o.cards || {}; S.order = o.order || {}; S.groups = o.groups || []; S.gcfg = o.gcfg || {}; ensureGroups();
+      S.cards = o.cards || {}; S.order = o.order || {}; S.groups = o.groups || []; S.gcfg = o.gcfg || {}; S.stacks = o.stacks || []; S.scfg = o.scfg || {}; ensureGroups();
       S.local = {};
       (o.show || []).forEach(function (id) { S.local[id] = false; });
       (o.hide || []).forEach(function (id) { S.local[id] = true; });
