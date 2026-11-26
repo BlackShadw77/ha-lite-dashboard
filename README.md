@@ -1,24 +1,8 @@
 # HA Lite Dashboard
-
+AI Built (claude)
 A lightweight, standalone HTML dashboard for Home Assistant.
 
 Designed to provide a simple interface for monitoring and controlling Home Assistant devices, with support for older browsers and devices, including iOS 12.
-
-Designed with assitance from Claude
-
-**[GitHub Repository](https://github.com/BlackShadw77/ha-lite-dashboard)**
-
-## Features
-
-- Lightweight standalone HTML file
-- No additional Home Assistant integrations required
-- Compatible with older browsers
-- Live Home Assistant entity states
-- Device controls for supported entities
-- Customisable cards, icons and layouts
-- Light and dark themes
-- Dashboard layout backup and restore
-- GitHub update notifications
 
 ## Requirements
 
@@ -53,13 +37,13 @@ Using a separate account limits the impact of a compromised access token.
 
 ### 3. Download the dashboard
 
-Download the latest HTML file from GitHub:
+Download the latest HTML file and icons (only need icons once) from GitHub:
 
 [Download ha-lite-dashboard.html](https://raw.githubusercontent.com/BlackShadw77/ha-lite-dashboard/main/ha-lite-dashboard.html)
 
 ### 4. Upload to Home Assistant
 
-Copy the downloaded file into your Home Assistant `www` directory.
+Copy the downloaded file and icons into your Home Assistant `www` directory.
 
 `/config/www/ha-lite-dashboard.html`
 
@@ -95,18 +79,6 @@ The dashboard can check GitHub for newer versions and notify you when an update 
 
 **Note:** Update notifications do not automatically install updates. The *Reload latest version* option reloads the file already hosted on your Home Assistant server.
 
-## Configuration
-
-Dashboard settings and layouts are stored locally in the browser.
-
-Available customisation includes:
-
-- Entity visibility and ordering
-- Card names, icons and sizes
-- Dashboard themes and colours
-- Clock and calendar display
-- Entity grouping
-
 ### Backup and Restore
 
 Use the **Backup / Restore** option in Edit Mode to export or import dashboard layouts.
@@ -122,7 +94,3 @@ This is useful when moving to another device or browser.
 - Revoke compromised tokens from your Home Assistant profile.
 
 **Remember:** A non-administrator account is recommended, but its API access should still be tested against the devices and actions you intend to use.
-
-## Repository
-
-[BlackShadw77/ha-lite-dashboard](https://github.com/BlackShadw77/ha-lite-dashboard)
