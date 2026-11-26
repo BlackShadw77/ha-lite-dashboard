@@ -110,9 +110,15 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 .ev .tt{-webkit-box-flex:1;-webkit-flex:1;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ev.past{opacity:.5}
 .ev.none,.ev.more{color:var(--muted);font-size:14px}
-#cal_week{display:grid;grid-template-columns:repeat(6,1fr);grid-gap:8px;margin-top:10px}
+#cal_week{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-gap:8px;margin-top:10px}
 .wd{background:var(--panel2);border-radius:10px;padding:8px 2px 6px;text-align:center}
-.wd .d1{font-size:12px;color:var(--muted)}
+.wd .d1{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center;-webkit-box-align:center;-webkit-align-items:center;align-items:center;height:15px;line-height:15px;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden}
+.wx{display:-webkit-inline-box;display:-webkit-inline-flex;display:inline-flex;-webkit-box-align:center;-webkit-align-items:center;align-items:center;white-space:nowrap}
+.wx .wxi{margin:0 4px;font-size:14px;line-height:1;color:var(--text)}
+.wx .hi{color:var(--text);font-weight:600}
+.wx .lo{margin-left:3px;opacity:.7}
+.wxh{font-size:13px;margin:0 10px;color:var(--muted)}
+@media (max-width:640px){.wd .wx .lo{display:none}}
 .wd .d2{font-size:20px;font-weight:300;line-height:1.2}
 .dots{height:12px;margin-top:3px;line-height:9px;white-space:nowrap;overflow:hidden}
 .dots span{display:inline-block;width:7px;height:7px;border-radius:4px;margin:0 1px}
@@ -195,6 +201,18 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 .sin{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-orient:vertical;-webkit-flex-direction:column;flex-direction:column;-webkit-box-flex:1;-webkit-flex:1 1 auto;flex:1 1 auto;min-width:0}
 .sin>*{-webkit-box-flex:1;-webkit-flex:1 1 auto;flex:1 1 auto;min-width:0}
 .sin>*+*{margin-top:10px}
+#live_act{margin-top:6px}
+#live_act .arow{margin:12px 0 4px}
+#live_act .arow.one{display:inline-block;margin:10px 0 0;vertical-align:top}
+#live_act .al{font-size:12px;color:var(--muted);margin-bottom:5px}
+#live_act .abtn{margin:0 8px 8px 0}
+#live_act .abtn.on,#live_act .abtn.cur{background:var(--on);color:var(--ink);font-weight:600}
+#live_act .abtn.armed{background:#e5604d;color:#fff;font-weight:600}
+#live_act .abtn[disabled]{opacity:.45}
+#live_act select{width:auto;min-width:220px;max-width:100%}
+.arow2{border:1px solid var(--panel2);border-radius:12px;padding:10px;margin:10px 0}
+.arow2 select,.arow2 input[type=text]{margin:4px 0 8px}
+.arow2 .cs{margin:4px 0}
 </style>
 </head>
 <body>
@@ -206,7 +224,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   <button class="btn" id="edit">Edit</button><button class="btn" id="gear">Settings</button>
 </header>
 <div id="cal">
-  <div class="ch"><b id="cal_t">Today</b><button class="btn" id="cal_choose" style="display:none">Calendars</button><button class="btn" id="cal_month">Month</button></div>
+  <div class="ch"><b id="cal_t">Today</b><span id="cal_wx" class="wxh"></span><button class="btn" id="cal_choose" style="display:none">Calendars</button><button class="btn" id="cal_month">Month</button></div>
   <div id="cal_today"></div>
   <div id="cal_week"></div>
 </div>
@@ -241,6 +259,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     <div class="lay">
       <label>Calendar<select id="l_cal"><option value="1">Show</option><option value="0">Hide</option></select></label>
       <label>Week starts<select id="l_wk"><option value="1">Monday</option><option value="0">Sunday</option></select></label>
+      <label>Weather<select id="l_wx"><option value="auto">Automatic</option><option value="off">Off</option></select></label>
     </div>
   </details>
   <details class="sec">
@@ -308,6 +327,8 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   <select id="c_stack"></select></div>
   <label for="c_trig" id="c_trig_l" style="display:none">Open the live view when this triggers (doorbell, motion)</label>
   <select id="c_trig" style="display:none"></select>
+  <div id="c_actw" style="display:none"><label>Buttons shown in the live view (unlock a door, quick replies, scripts)</label>
+  <button class="btn" id="c_acts" style="margin:0 0 4px">Add or change actions…</button></div>
   <label for="c_modes" id="c_modes_l">Mode controls</label>
   <select id="c_modes"><option value="drop">Dropdown</option><option value="btns">Buttons</option><option value="off">Hidden</option></select>
   <label for="c_vis">Visibility</label>
@@ -354,6 +375,14 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   <p id="s_err"></p>
   <div class="row"><button class="btn" id="s_del">Delete stack</button><button class="btn" id="s_cancel">Cancel</button><button class="btn go" id="s_save">Save</button></div>
 </div></div>
+<div id="aed" class="modal"><div class="box">
+  <h2>Live view actions</h2>
+  <p>These appear under the picture when this camera is open full screen. Pick a lock, a button, a script, a switch, or a quick-reply selector.</p>
+  <div id="a_list"></div>
+  <button class="btn" id="a_add" style="margin:4px 0 0">Add action</button>
+  <p id="a_err" style="color:#e5604d"></p>
+  <div class="row"><button class="btn" id="a_cancel">Cancel</button><button class="btn go" id="a_save">Done</button></div>
+</div></div>
 <div id="ged" class="modal"><div class="box">
   <h2>Edit group</h2>
   <label for="g_name">Name</label>
@@ -384,16 +413,18 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   <div id="det_b"></div>
 </div></div>
 <div id="live" class="modal"><div class="box wide live">
-  <div class="ch"><b id="live_t"></b><button class="btn" id="live_mode">Use video</button><button class="btn go" id="live_close">Close</button></div>
+  <div class="ch"><b id="live_t"></b><button class="btn" id="live_mode">Use video</button><button class="btn" id="live_snd" style="display:none">Sound on</button><button class="btn go" id="live_close">Close</button></div>
   <div class="cam" id="live_v"></div>
   <p class="evl" id="live_s"></p>
+  <div id="live_act"></div>
+  <p class="evl" id="live_m"></p>
 </div></div>
 
 <script>
 (function () {
   'use strict';
   // Bump this whenever the file is edited. Open copies of the page compare it with the server's copy and offer to update.
-  var BUILD = '2026-11-03z';
+  var BUILD = '2026-11-04b';
   var POLL_MS = 5000;
   // ---- Defaults for every device. Edit these, or use the Edit button on the page for per-device changes. ----
   var CONFIG = {
@@ -505,8 +536,9 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       S.busy = false;
       setStatus('live');
       if (!S.dimOn && !S.edit && shownChanged(prevSt, m)) { render(); }
+      if (S.live) { renderLiveActs(); }
       dimCheck();
-      if (!S.calInit) { S.calInit = true; loadCals(); }
+      if (!S.calInit) { S.calInit = true; loadCals(); loadForecast(); }
     }).catch(function (e) {
       S.busy = false;
       setStatus(e.message === 'Token rejected' ? 'Token rejected' : 'Can\u2019t reach Home Assistant', true);
@@ -810,7 +842,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     $('edit').textContent = on ? 'Done' : 'Edit';
     $('edit').className = on ? 'btn act' : 'btn';
     render(); renderCal();
-    if (on) { fillDimEnt(); }
+    if (on) { fillDimEnt(); fillWxEnt(); }
     dimCheck();
   }
   function bulk(hide) { S.shownIds.forEach(function (id) { setHidden(id, hide); }); render(); }
@@ -818,7 +850,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   /* ---------- layout, modes, card editor ---------- */
   var SIZES = { s: 118, m: 150, l: 200 }, TEXT = { s: 14, m: 16, l: 19 };
   var ACC = { amber: ['#f2b134', '#241a05'], teal: ['#3cc7b0', '#04231e'], blue: ['#5aa9f2', '#04182b'], rose: ['#f0708f', '#2b0613'], green: ['#8bd05a', '#102105'] };
-  function defLayout() { return { size: 'm', text: 'm', theme: 'dark', accent: 'amber', clock: true, icons: true, iconset: 'mdi', allsens: true, cal: true, wk: 1, camrate: 5, camauto: true, camhold: 45, dim: false, dimfrom: '22:00', dimto: '06:30', dimlvl: 85, dimwake: 30, dimEnt: '', wakeEnt: '', style: 'std', glname: 'show' }; }
+  function defLayout() { return { size: 'm', text: 'm', theme: 'dark', accent: 'amber', clock: true, icons: true, iconset: 'mdi', allsens: true, cal: true, wk: 1, camrate: 5, camauto: true, camhold: 45, dim: false, dimfrom: '22:00', dimto: '06:30', dimlvl: 85, dimwake: 30, dimEnt: '', wakeEnt: '', style: 'std', glname: 'show', wx: 'auto' }; }
   function card(id) { return S.cards[id] || {}; }
   function loadJ(k, def) { try { return JSON.parse(store(k)) || def; } catch (e) { return def; } }
   function saveAll() { store('ha_layout', JSON.stringify(S.layout)); store('ha_cards', JSON.stringify(S.cards)); store('ha_order', JSON.stringify(S.order)); store('ha_groups', JSON.stringify(S.groups)); store('ha_gcfg', JSON.stringify(S.gcfg)); store('ha_stacks', JSON.stringify(S.stacks)); store('ha_scfg', JSON.stringify(S.scfg)); store('ha_hidden', JSON.stringify(S.local)); }
@@ -832,7 +864,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     g.style.fontSize = TEXT[L.text] + 'px';
     $('time').parentNode.style.visibility = L.clock ? 'visible' : 'hidden';
     $('l_size').value = L.size; $('l_text').value = L.text; $('l_theme').value = L.theme; $('l_accent').value = L.accent;
-    $('l_clock').value = L.clock ? '1' : '0'; $('l_icons').value = L.icons ? '1' : '0'; $('l_iconset').value = L.iconset; $('l_allsens').value = L.allsens ? '1' : '0'; $('l_cal').value = L.cal ? '1' : '0'; $('l_wk').value = String(L.wk);
+    $('l_clock').value = L.clock ? '1' : '0'; $('l_icons').value = L.icons ? '1' : '0'; $('l_iconset').value = L.iconset; $('l_allsens').value = L.allsens ? '1' : '0'; $('l_cal').value = L.cal ? '1' : '0'; $('l_wk').value = String(L.wk); $('l_wx').value = L.wx || 'auto';
     $('l_camrate').value = String(L.camrate); $('l_camauto').value = L.camauto ? '1' : '0'; $('l_camhold').value = String(L.camhold);
     $('l_dim').value = L.dim ? '1' : '0'; $('l_dimlvl').value = String(L.dimlvl); $('l_dimwake').value = String(L.dimwake);
     $('l_dimfrom').value = L.dimfrom || ''; $('l_dimto').value = L.dimto || ''; $('l_dimEnt').value = L.dimEnt || ''; $('l_wakeEnt').value = L.wakeEnt || ''; $('l_style').value = L.style || 'std'; $('l_glname').value = L.glname || 'show';
@@ -901,6 +933,9 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     var isCam = d === 'camera';
     $('c_trig').style.display = isCam ? 'block' : 'none'; $('c_trig_l').style.display = isCam ? 'block' : 'none';
     if (isCam) { fillTrig(c.trig); }
+    $('c_actw').style.display = isCam ? 'block' : 'none';
+    S.actsTmp = JSON.parse(JSON.stringify(c.acts || []));
+    $('c_acts').textContent = S.actsTmp.length ? S.actsTmp.length + ' action' + (S.actsTmp.length > 1 ? 's' : '') + ' \u00B7 change\u2026' : 'Add or change actions\u2026';
     var m = ['input_select', 'select', 'climate', 'fan', 'light', 'media_player'].indexOf(d) > -1;
     $('c_modes').style.display = m ? 'block' : 'none'; $('c_modes_l').style.display = m ? 'block' : 'none';
     var sf = STATEFUL.indexOf(d) > -1;
@@ -929,6 +964,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     if ($('c_gname').value) { c.gname = $('c_gname').value; }
     var tr = $('c_trig').value;
     if (tr && dom(id) === 'camera') { c.trig = tr; }
+    if (dom(id) === 'camera' && S.actsTmp && S.actsTmp.length) { c.acts = S.actsTmp; }
     if (Object.keys(c).length) { S.cards[id] = c; } else { delete S.cards[id]; }
     setHidden(id, $('c_vis').value === '1');
     saveAll(); $('ced').style.display = 'none'; render(); startWs();
@@ -1072,10 +1108,13 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     var gen = L.gen, id = L.id, box = $('live_v');
     function alive() { return S.live && S.live.id === id && S.live.gen === gen; }
     $('live_mode').textContent = mode === 'hls' ? 'Use stream' : 'Use video';
+    $('live_snd').style.display = 'none';
     liveStatus('Connecting\u2026');
     if (mode === 'hls') {
       var v = document.createElement('video');
       v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.muted = true; v.autoplay = true; v.controls = true;
+      $('live_snd').style.display = 'inline-block'; $('live_snd').textContent = 'Sound on';
+      v.addEventListener('volumechange', function () { $('live_snd').textContent = v.muted ? 'Sound on' : 'Sound off'; });
       box.appendChild(v); L.el = v;
       v.addEventListener('playing', function () { if (alive()) { clearTimeout(L.tmo); liveStatus('Live (video)'); } });
       v.addEventListener('error', function () { if (alive()) { liveFail('video error'); } });
@@ -1092,7 +1131,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       var im = document.createElement('img');
       im.onerror = function () { if (alive()) { L.note = 'Stream unavailable. '; startLive(L.tried.hls ? 'snap' : 'hls'); } };
       im.src = (S.url || '') + '/api/camera_proxy_stream/' + encodeURIComponent(id) + '?token=' + encodeURIComponent(tok);
-      box.appendChild(im); L.el = im; liveStatus('Live (stream)');
+      box.appendChild(im); L.el = im; liveStatus('Live (stream, no sound. Use video for sound)');
     } else {
       var sn = document.createElement('img');
       box.appendChild(sn); L.el = sn;
@@ -1114,13 +1153,128 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     $('live').style.display = 'block';
     if (auto) { S.dimWake = new Date().getTime() + S.layout.dimwake * 1000; }     // a doorbell wakes a dimmed screen
     startLive('mjpeg');
+    renderLiveActs();
     if (auto && S.layout.camhold > 0) { S.live.to = setTimeout(closeLive, S.layout.camhold * 1000); }
   }
   function closeLive() {
     var L = S.live; if (!L) { return; }
     clearTimeout(L.to); liveClear();
     S.live = null; $('live').style.display = 'none'; $('live_s').textContent = '';
+    $('live_act').innerHTML = ''; $('live_m').textContent = ''; S.actArm = false;
     dimCheck();
+  }
+  /* ---- optional action buttons under the picture: unlock a door, quick replies, scripts ---- */
+  var ACT_GROUPS = [['Locks', ['lock']], ['Quick replies and selectors', ['select', 'input_select']], ['Buttons', ['button']],
+    ['Scripts and scenes', ['script', 'scene']], ['Switches and lights', ['switch', 'input_boolean', 'light', 'fan']], ['Covers', ['cover']]];
+  function liveMsg(m) { $('live_m').textContent = m || ''; clearTimeout(S.liveMT); if (m) { S.liveMT = setTimeout(function () { $('live_m').textContent = ''; }, 6000); } }
+  function callAct(service, data, msg) {
+    var p = service.split('/');
+    api('POST', '/api/services/' + p[0] + '/' + p[1], data)
+      .then(function () { liveMsg(msg); setTimeout(poll, 500); setTimeout(poll, 2000); })
+      .catch(function (e) { liveMsg('That didn\u2019t work (' + e.message + ')'); });
+  }
+  // two taps when "ask to confirm" is on, so a stray touch can't unlock the door
+  function actBtn(label, cls, ask, fn) {
+    var b = el('button', 'btn abtn ' + (cls || ''), label), armed = false;
+    b.addEventListener('click', function () {
+      if (ask && !armed) {
+        armed = true; S.actArm = true; b.textContent = 'Tap again: ' + label; b.className += ' armed';
+        setTimeout(function () { if (armed) { armed = false; S.actArm = false; b.textContent = label; b.className = b.className.replace(' armed', ''); } }, 3500);
+        return;
+      }
+      armed = false; S.actArm = false; fn();
+    });
+    return b;
+  }
+  function actCtl(a) {
+    var st = S.states[a.e], d = dom(a.e), w = el('div', 'arow' + (d === 'select' || d === 'input_select' ? '' : ' one')), nm = a.l || (st ? nameOf(st) : a.e), data = { entity_id: a.e }, opts, b, sl;
+    if (!st) { w.appendChild(el('div', 'al', nm + ' (not available)')); return w; }
+    if (d === 'select' || d === 'input_select') {
+      opts = (st.attributes && st.attributes.options) || [];
+      w.appendChild(el('div', 'al', nm));
+      if (a.s === 'btns') {
+        opts.forEach(function (o) {
+          w.appendChild(actBtn(pretty(o), o === st.state ? 'cur' : '', !!a.c, function () { callAct(d + '/select_option', { entity_id: a.e, option: o }, 'Sent: ' + pretty(o)); }));
+        });
+      } else {
+        sl = document.createElement('select');
+        b = document.createElement('option'); b.value = ''; b.textContent = 'Choose\u2026'; sl.appendChild(b);
+        opts.forEach(function (o) { var op = document.createElement('option'); op.value = o; op.textContent = pretty(o); sl.appendChild(op); });
+        sl.addEventListener('focus', function () { S.drag = true; clearTimeout(S.dt); S.dt = setTimeout(function () { S.drag = false; }, 30000); });
+        sl.addEventListener('blur', function () { S.drag = false; });
+        sl.addEventListener('change', function () {
+          var v = sl.value; S.drag = false; sl.value = '';      // each pick is sent straight away; the box goes back to "Choose"
+          if (v) { callAct(d + '/select_option', { entity_id: a.e, option: v }, 'Sent: ' + pretty(v)); }
+        });
+        w.appendChild(sl);
+      }
+      return w;
+    }
+    if (d === 'lock') {
+      var locked = st.state === 'locked', busy = st.state === 'locking' || st.state === 'unlocking' || st.state === 'jammed' || st.state === 'unavailable';
+      b = actBtn(busy ? nm + ' \u00B7 ' + pretty(st.state) : (locked ? 'Unlock ' : 'Lock ') + nm, locked ? '' : 'on', locked && !!a.c, function () { callAct(locked ? 'lock/unlock' : 'lock/lock', data, locked ? 'Unlock sent' : 'Lock sent'); });
+      if (busy) { b.disabled = true; }
+      w.appendChild(b); return w;
+    }
+    if (d === 'button') { w.appendChild(actBtn(nm, '', !!a.c, function () { callAct('button/press', data, nm + ' sent'); })); return w; }
+    if (d === 'script' || d === 'scene') { w.appendChild(actBtn(nm, '', !!a.c, function () { callAct(d + '/turn_on', data, nm + ' done'); })); return w; }
+    if (d === 'cover') { var op = st.state === 'open'; w.appendChild(actBtn((op ? 'Close ' : 'Open ') + nm, op ? 'on' : '', !!a.c, function () { callAct('cover/toggle', data, nm + ' sent'); })); return w; }
+    w.appendChild(actBtn(nm + ' \u00B7 ' + (isOn(st) ? 'On' : 'Off'), isOn(st) ? 'on' : '', !!a.c, function () { callAct('homeassistant/toggle', data, nm + ' toggled'); }));
+    return w;
+  }
+  function renderLiveActs() {
+    var L = S.live, box = $('live_act'), acts;
+    if (!L || S.actArm || S.drag) { return; }
+    acts = card(L.id).acts || [];
+    box.innerHTML = '';
+    acts.forEach(function (a) { box.appendChild(actCtl(a)); });
+  }
+  // the editor for a camera's action list (kept in S.actsTmp until the card editor is saved)
+  function actRow(a) {
+    var r = el('div', 'arow2'), es = document.createElement('select'), li = document.createElement('input'), ss = document.createElement('select'),
+        sw = el('div'), cw = el('label', 'cs'), cb = document.createElement('input'), rm = el('button', 'btn', 'Remove'), o;
+    o = document.createElement('option'); o.value = ''; o.textContent = 'Choose an entity\u2026'; es.appendChild(o);
+    ACT_GROUPS.forEach(function (g) {
+      var ids = Object.keys(S.states).filter(function (x) { return g[1].indexOf(dom(x)) > -1; })
+        .sort(function (x, y) { return nameOf(S.states[x]).toLowerCase() < nameOf(S.states[y]).toLowerCase() ? -1 : 1; });
+      if (!ids.length) { return; }
+      var og = document.createElement('optgroup'); og.label = g[0];
+      ids.forEach(function (x) { var op = document.createElement('option'); op.value = x; op.textContent = nameOf(S.states[x]) + ' (' + x + ')'; og.appendChild(op); });
+      es.appendChild(og);
+    });
+    es.value = a.e || '';
+    if (a.e && es.value !== a.e) { o = document.createElement('option'); o.value = a.e; o.textContent = a.e; es.appendChild(o); es.value = a.e; }
+    li.type = 'text'; li.placeholder = 'Button text (optional)'; li.value = a.l || ''; li.setAttribute('autocorrect', 'off');
+    [['drop', 'Show as a dropdown'], ['btns', 'Show as buttons']].forEach(function (x) { var op = document.createElement('option'); op.value = x[0]; op.textContent = x[1]; ss.appendChild(op); });
+    ss.value = a.s || 'drop'; sw.appendChild(ss);
+    cb.type = 'checkbox'; cb.checked = a.c !== undefined ? !!a.c : dom(a.e || '') === 'lock';
+    cw.appendChild(cb); cw.appendChild(document.createTextNode(' Ask to confirm (tap twice)'));
+    function sync() {
+      var d = dom(es.value), isSel = d === 'select' || d === 'input_select';
+      sw.style.display = isSel ? 'block' : 'none';
+      cw.style.display = (!isSel || ss.value === 'btns') ? 'block' : 'none';
+    }
+    es.addEventListener('change', function () { cb.checked = dom(es.value) === 'lock'; sync(); });
+    ss.addEventListener('change', sync);
+    rm.addEventListener('click', function () { r.parentNode.removeChild(r); });
+    [es, li, sw, cw, rm].forEach(function (n) { r.appendChild(n); });
+    r.__get = function () { return { e: es.value, l: li.value.replace(/^\s+|\s+$/g, ''), s: ss.value, c: cb.checked }; };
+    sync();
+    return r;
+  }
+  function openActEd() {
+    var l = $('a_list');
+    l.innerHTML = ''; $('a_err').textContent = '';
+    (S.actsTmp || []).forEach(function (a) { l.appendChild(actRow(a)); });
+    if (!l.children.length) { l.appendChild(actRow({})); }
+    $('aed').style.display = 'block';
+  }
+  function saveActEd() {
+    var out = [], rows = $('a_list').children, i, a;
+    for (i = 0; i < rows.length; i++) { a = rows[i].__get(); if (a.e) { out.push(a); } }
+    S.actsTmp = out;
+    $('c_acts').textContent = (out.length ? out.length + ' action' + (out.length > 1 ? 's' : '') + ' \u00B7 change\u2026' : 'Add or change actions\u2026');
+    $('aed').style.display = 'none';
   }
   function liveTouched() { var L = S.live; if (L && L.to) { clearTimeout(L.to); L.to = 0; } }
 
@@ -1836,12 +1990,76 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     return w;
   }
 
+  /* weather forecast: daily high, low and an icon, from a Home Assistant weather entity */
+  var WXI = { 'sunny': ['weather-sunny', '\u2600\uFE0F'], 'clear-night': ['weather-night', '\uD83C\uDF19'], 'partlycloudy': ['weather-partly-cloudy', '\u26C5'],
+    'cloudy': ['weather-cloudy', '\u2601\uFE0F'], 'rainy': ['weather-rainy', '\uD83C\uDF27'], 'pouring': ['weather-pouring', '\uD83C\uDF27'],
+    'lightning': ['weather-lightning', '\u26C8'], 'lightning-rainy': ['weather-lightning-rainy', '\u26C8'], 'snowy': ['weather-snowy', '\uD83C\uDF28'],
+    'snowy-rainy': ['weather-snowy-rainy', '\uD83C\uDF28'], 'fog': ['weather-fog', '\uD83C\uDF2B'], 'hail': ['weather-hail', '\uD83C\uDF28'],
+    'windy': ['weather-windy', '\uD83D\uDCA8'], 'windy-variant': ['weather-windy-variant', '\uD83D\uDCA8'], 'exceptional': ['alert-circle-outline', '\u26A0\uFE0F'] };
+  function wxEntity() {
+    var v = S.layout.wx;
+    if (v === 'off') { return ''; }
+    if (v && v !== 'auto' && S.states[v]) { return v; }
+    return Object.keys(S.states).filter(function (x) { return dom(x) === 'weather'; }).sort()[0] || '';
+  }
+  // forecast dates arrive in different shapes; a UTC midnight means "that calendar date", anything else is converted to local time
+  function wxKey(str) {
+    var d;
+    if (/^\d{4}-\d{2}-\d{2}(T00:00:00(\.0+)?(Z|\+00:00))?$/.test(str)) { return dkey(pdate(str)); }
+    d = new Date(String(str).replace(' ', 'T'));
+    return isNaN(d.getTime()) ? '' : dkey(sod(d));
+  }
+  function wxStore(list) {
+    var m = {};
+    (list || []).forEach(function (f) {
+      var k = f && f.datetime ? wxKey(f.datetime) : '';
+      if (k && typeof f.temperature === 'number') { m[k] = { hi: Math.round(f.temperature), lo: typeof f.templow === 'number' ? Math.round(f.templow) : null, c: f.condition }; }
+    });
+    S.wx = m;
+    renderCal();
+  }
+  function loadForecast() {
+    var ent = wxEntity(), st = ent ? S.states[ent] : null;
+    if (!ent || !st) { S.wx = null; renderCal(); return; }
+    if (st.attributes && st.attributes.forecast && st.attributes.forecast.length) { wxStore(st.attributes.forecast); return; }      // older Home Assistant versions
+    api('POST', '/api/services/weather/get_forecasts?return_response', { entity_id: ent, type: 'daily' }).then(function (r) {
+      var o = r && r.service_response && r.service_response[ent];
+      wxStore(o && o.forecast);
+    }).catch(function () { S.wx = null; renderCal(); });
+  }
+  function wxNode(f) {
+    var w = el('span', 'wx'), ic = el('span', 'wxi'), mdi = S.layout.iconset === 'mdi' && S.mdiOk !== false, e = WXI[f.c];
+    if (e) { if (mdi) { ic.appendChild(el('i', 'mdi mdi-' + e[0])); } else { ic.textContent = e[1]; } w.appendChild(ic); }
+    w.appendChild(el('span', 'hi', f.hi + '\u00B0'));
+    if (f.lo !== null) { w.appendChild(el('span', 'lo', '/' + f.lo + '\u00B0')); }
+    return w;
+  }
+  function fillWxEnt() {
+    var sel = $('l_wx'), cur = S.layout.wx || 'auto';
+    sel.innerHTML = '';
+    [['auto', 'Automatic'], ['off', 'Off']].forEach(function (o) { var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; sel.appendChild(op); });
+    Object.keys(S.states).filter(function (x) { return dom(x) === 'weather'; }).sort().forEach(function (x) {
+      var op = document.createElement('option'); op.value = x; op.textContent = nameOf(S.states[x]) + ' (' + x + ')'; sel.appendChild(op);
+    });
+    sel.value = cur;
+    if (sel.value !== cur) { var o = document.createElement('option'); o.value = cur; o.textContent = cur; sel.appendChild(o); sel.value = cur; }
+  }
+  function dayLine(day) {
+    var d = el('div', 'd1'), f = S.wx && S.wx[dkey(day)];
+    d.appendChild(el('span', '', DN[day.getDay()].slice(0, 3)));
+    if (f) { d.appendChild(wxNode(f)); }
+    return d;
+  }
+
   function renderCal() {
     var box = $('cal');
     if (!S.layout.cal || !S.cals.length) { box.style.display = 'none'; return; }
     box.style.display = 'block';
     var now = new Date(), today = sod(now), list = S.evMain || [], i;
     $('cal_t').textContent = 'Today \u00B7 ' + fmtDay(today);
+    var wxh = $('cal_wx'), wf = S.wx && S.wx[dkey(today)];
+    wxh.innerHTML = '';
+    if (wf) { wxh.appendChild(wxNode(wf)); }
     $('cal_choose').style.display = S.edit ? 'inline-block' : 'none';
     var t = $('cal_today'); t.innerHTML = '';
     var evs = dayEvents(list, today);
@@ -1853,7 +2071,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     for (i = 1; i <= 6; i++) {
       (function (day) {
         var c = el('div', 'wd');
-        c.appendChild(el('div', 'd1', DN[day.getDay()].slice(0, 3)));
+        c.appendChild(dayLine(day));
         c.appendChild(el('div', 'd2', String(day.getDate())));
         c.appendChild(dotsFor(dayEvents(list, day), 3));
         c.addEventListener('click', function () { openMonth(day); });
@@ -1945,7 +2163,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       S.chk = false;
       var m = /var BUILD = '([^']+)'/.exec(t);
       if (!m || m[1] === BUILD) { return; }
-      var open = S.edit || $('cfg').style.display === 'block' || $('ced').style.display === 'block' || $('bk').style.display === 'block' || $('calm').style.display === 'block' || $('cev').style.display === 'block' || $('calsel').style.display === 'block' || $('live').style.display === 'block' || $('det').style.display === 'block' || $('grp').style.display === 'block' || $('ged').style.display === 'block' || $('sed').style.display === 'block';
+      var open = S.edit || $('cfg').style.display === 'block' || $('ced').style.display === 'block' || $('bk').style.display === 'block' || $('calm').style.display === 'block' || $('cev').style.display === 'block' || $('calsel').style.display === 'block' || $('live').style.display === 'block' || $('det').style.display === 'block' || $('grp').style.display === 'block' || $('ged').style.display === 'block' || $('sed').style.display === 'block' || $('aed').style.display === 'block';
       var tried = null;
       try { tried = sessionStorage.getItem('ha_upd'); } catch (e) {}
       if (!open && tried !== m[1]) {
@@ -2019,6 +2237,17 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   $('g_icon').addEventListener('input', function () { iconSearch('g_icon', 'ic_res3'); });
   $('g_stack').addEventListener('change', groupEdToggle);
   $('addstack').addEventListener('click', addStack);
+  $('c_acts').addEventListener('click', openActEd);
+  $('a_add').addEventListener('click', function () { if ($('a_list').children.length < 8) { $('a_list').appendChild(actRow({})); } else { $('a_err').textContent = 'That is the maximum of 8.'; } });
+  $('a_save').addEventListener('click', saveActEd);
+  $('a_cancel').addEventListener('click', function () { $('aed').style.display = 'none'; });
+  $('live_snd').addEventListener('click', function () {
+    var v = S.live && S.live.el;
+    if (!v || v.tagName !== 'VIDEO') { return; }
+    v.muted = !v.muted;
+    if (!v.muted) { v.volume = 1; var pr = v.play(); if (pr && pr.catch) { pr.catch(function () {}); } }
+    $('live_snd').textContent = v.muted ? 'Sound on' : 'Sound off';
+  });
   $('s_save').addEventListener('click', saveStackEd);
   $('s_cancel').addEventListener('click', closeStackEd);
   $('s_del').addEventListener('click', deleteStackEd);
@@ -2040,6 +2269,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   $('cev_close').addEventListener('click', function () { $('cev').style.display = 'none'; });
   $('calsel_done').addEventListener('click', function () { $('calsel').style.display = 'none'; S.evMonth = {}; S.evMain = null; renderCal(); refreshMain(); });
   setInterval(refreshMain, 5 * 60 * 1000);
+  setInterval(loadForecast, 30 * 60 * 1000);
   $('reload').addEventListener('click', function () { goLatest(); });
   $('bld').textContent = 'Build ' + BUILD;
   $('gear').addEventListener('click', openCfg);
@@ -2048,7 +2278,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   var ly = loadJ('ha_layout', {}), lk;
   for (lk in ly) { if (ly.hasOwnProperty(lk)) { S.layout[lk] = ly[lk]; } }
   S.cards = loadJ('ha_cards', {}); S.order = loadJ('ha_order', {}); S.groups = loadJ('ha_groups', []); S.gcfg = loadJ('ha_gcfg', {}); S.stacks = loadJ('ha_stacks', []); S.scfg = loadJ('ha_scfg', {}); ensureGroups();
-  ['size', 'text', 'theme', 'accent', 'clock', 'icons', 'iconset', 'allsens', 'cal', 'wk', 'camrate', 'camauto', 'camhold', 'dim', 'dimfrom', 'dimto', 'dimlvl', 'dimwake', 'dimEnt', 'wakeEnt', 'style', 'glname'].forEach(function (k) {
+  ['size', 'text', 'theme', 'accent', 'clock', 'icons', 'iconset', 'allsens', 'cal', 'wk', 'camrate', 'camauto', 'camhold', 'dim', 'dimfrom', 'dimto', 'dimlvl', 'dimwake', 'dimEnt', 'wakeEnt', 'style', 'glname', 'wx'].forEach(function (k) {
     $('l_' + k).addEventListener('change', function () {
       S.layout[k] = (k === 'clock' || k === 'icons' || k === 'allsens' || k === 'cal' || k === 'camauto' || k === 'dim') ? this.value === '1' : ((k === 'wk' || k === 'camrate' || k === 'camhold' || k === 'dimlvl' || k === 'dimwake') ? parseInt(this.value, 10) : this.value);
       saveAll(); applyLayout(); render();
