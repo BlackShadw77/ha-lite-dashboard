@@ -200,6 +200,18 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 .segs .bar i{display:block;height:5px;background:var(--on)}
 .tile.on .segs span{background:rgba(36,26,5,.25)}
 .tile.on .segs span.a,.tile.on .segs .bar i{background:var(--ink)}
+#mb{z-index:10}
+#c_src{font-size:12px;color:var(--muted);margin:-8px 0 12px;word-break:break-all}
+#mb_f{width:100%;box-sizing:border-box;font-size:16px;padding:8px 10px;border-radius:8px;border:1px solid #3a4650;background:var(--bg);color:var(--text);-webkit-appearance:none;margin:2px 0 6px}
+.mbr{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-align:center;-webkit-align-items:center;align-items:center;padding:7px 0;border-top:1px solid var(--panel2)}
+.mbt{width:44px;height:44px;border-radius:6px;background:var(--panel2);margin-right:12px;-webkit-flex-shrink:0;flex-shrink:0;overflow:hidden;text-align:center;line-height:44px;font-size:22px;color:var(--muted)}
+.mbt img{display:block;width:44px;height:44px;object-fit:cover}
+.mbn{-webkit-box-flex:1;-webkit-flex:1;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mbp{border:0;border-radius:8px;background:var(--panel2);color:var(--text);padding:9px 12px;margin-left:8px;font-size:14px;-webkit-appearance:none}
+.mbp.go{background:var(--on);color:var(--ink);font-weight:600}
+.mbq{padding:2px 0 8px 56px}
+.mbq .mbp{margin:0 8px 0 0}
+.mbo,.mbmore{padding:12px 0;color:var(--muted);font-size:14px;border-top:1px solid var(--panel2)}
 #grp_b{display:grid;grid-gap:10px;font-size:16px;margin-top:6px}
 .gn small{font-weight:400;color:var(--muted);margin-left:6px}
 #g_err,#s_err{color:#e5604d;font-size:14px;margin:8px 0 0}
@@ -317,6 +329,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 
 <div id="ced" class="modal"><div class="box">
   <h2 id="c_title">Edit card</h2>
+  <div id="c_src"></div>
   <label for="c_name">Name</label>
   <input id="c_name" type="text" placeholder="Default name" autocorrect="off">
   <label for="c_icon" id="c_icon_l">Icon: search by name (e.g. lamp), or type an mdi: name or an emoji. Blank uses the default.</label>
@@ -419,6 +432,12 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   <div class="ch"><b id="grp_t"></b><button class="btn go" id="grp_close">Close</button></div>
   <div id="grp_b"></div>
 </div></div>
+<div id="mb" class="modal"><div class="box wide">
+  <div class="ch"><button class="btn" id="mb_back" style="display:none;margin:0 8px 0 0">&lsaquo; Back</button><b id="mb_t"></b><button class="btn go" id="mb_close">Close</button></div>
+  <input id="mb_f" type="search" placeholder="Filter this list" autocapitalize="off" autocorrect="off" style="display:none">
+  <p class="evl" id="mb_m"></p>
+  <div id="mb_l"></div>
+</div></div>
 <div id="det" class="modal"><div class="box">
   <div class="ch"><b id="det_t"></b><button class="btn go" id="det_close">Close</button></div>
   <div id="det_b"></div>
@@ -435,7 +454,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 (function () {
   'use strict';
   // Bump this whenever the file is edited. Open copies of the page compare it with the server's copy and offer to update.
-  var BUILD = '2026-11-04f';
+  var BUILD = '2026-11-04h';
   var POLL_MS = 5000;
   // ---- Defaults for every device. Edit these, or use the Edit button on the page for per-device changes. ----
   var CONFIG = {
@@ -792,7 +811,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       var d = dom(ids[i]), st = S.states[ids[i]];
       if (!DOM[d]) { continue; }
       if ((!S.edit || S.onlyShown) && isHidden(ids[i])) { continue; }
-      if (q && (nameOf(st).toLowerCase() + ' ' + ids[i]).indexOf(q) < 0) { continue; }
+      if (q && (nameOf(st).toLowerCase() + ' ' + ids[i] + ' ' + integText(ids[i])).indexOf(q) < 0) { continue; }
       vis.push(st); has[d] = true;
     }
     var tabs = $('tabs'); tabs.innerHTML = '';
@@ -853,7 +872,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     $('edit').textContent = on ? 'Done' : 'Edit';
     $('edit').className = on ? 'btn act' : 'btn';
     render(); renderCal();
-    if (on) { fillDimEnt(); fillWxEnt(); }
+    if (on) { fillDimEnt(); fillWxEnt(); loadInteg(function () { if (S.edit && S.q) { render(); } }); }
     dimCheck();
   }
   function bulk(hide) { S.shownIds.forEach(function (id) { setHidden(id, hide); }); render(); }
@@ -941,10 +960,60 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     return w;
   }
 
+  /* which integration an entity belongs to: one template call for every entity (the entity registry itself is admin only),
+     asked once per page load when Edit starts. Entities with no config entry (helpers, YAML) have none. */
+  var INTEG_TPL = "{% set ns = namespace(l=[]) %}{% for s in states %}{% set c = config_entry_id(s.entity_id) %}{% if c %}{% set ns.l = ns.l + [s.entity_id ~ '|' ~ config_entry_attr(c, 'domain') ~ '|' ~ config_entry_attr(c, 'title')] %}{% endif %}{% endfor %}{{ ns.l | join(';;') }}";
+  function integLabel(id) {
+    var x = S.integ && S.integ[id];
+    if (!x) { return ''; }
+    return (x.t && x.t.toLowerCase() !== x.d.replace(/_/g, ' ')) ? x.t + ' (' + x.d + ')' : x.d;
+  }
+  function integText(id) { var x = S.integ && S.integ[id]; return x ? (x.d + ' ' + x.t).toLowerCase() : ''; }
+  function integRender(cb, tpl) {     // WebSocket first, then the REST endpoint; cb(text or null)
+    var ws, done = false, to;
+    function rest() {
+      fetch(S.url + '/api/template', { method: 'POST', headers: { 'Authorization': 'Bearer ' + S.token, 'Content-Type': 'application/json' }, body: JSON.stringify({ template: tpl }) })
+        .then(function (r) { if (!r.ok) { throw new Error('http'); } return r.text(); }).then(function (t) { cb(t); }).catch(function () { cb(null); });
+    }
+    function fin(txt) { if (done) { return; } done = true; clearTimeout(to); try { ws.close(); } catch (e) {} if (txt === null) { rest(); } else { cb(txt); } }
+    try { ws = new WebSocket(wsUrl()); } catch (e) { rest(); return; }
+    to = setTimeout(function () { fin(null); }, 10000);
+    ws.onmessage = function (ev) {
+      var m; try { m = JSON.parse(ev.data); } catch (x) { return; }
+      if (m.type === 'auth_required') { ws.send(JSON.stringify({ type: 'auth', access_token: S.token })); }
+      else if (m.type === 'auth_ok') { ws.send(JSON.stringify({ id: 1, type: 'render_template', template: tpl, timeout: 8, report_errors: true })); }
+      else if (m.type === 'auth_invalid') { fin(null); }
+      else if (m.type === 'result' && m.id === 1 && !m.success) { fin(null); }
+      else if (m.type === 'event' && m.id === 1 && m.event) { if (m.event.error) { fin(null); } else { fin(String(m.event.result === undefined || m.event.result === null ? '' : m.event.result)); } }
+    };
+    ws.onerror = function () { fin(null); };
+    ws.onclose = function () { fin(null); };
+  }
+  function loadInteg(cb) {
+    if (S.integ || S.integFail) { cb(); return; }
+    (S.integQ = S.integQ || []).push(cb);
+    if (S.integBusy) { return; }
+    S.integBusy = true;
+    integRender(function (txt) {
+      var m = {}, q;
+      S.integBusy = false;
+      if (txt === null) { S.integFail = true; }
+      else { txt.split(';;').forEach(function (p) { var a = p.split('|'); if (a.length >= 2) { m[a[0]] = { d: a[1], t: a.slice(2).join('|') }; } }); S.integ = m; }
+      q = S.integQ; S.integQ = []; q.forEach(function (f) { f(); });
+    }, INTEG_TPL);
+  }
+  function showSrc(id) {
+    var e = $('c_src');
+    e.textContent = id + ' \u00B7 looking up integration\u2026';
+    loadInteg(function () {
+      if (S.editId !== id) { return; }
+      e.textContent = id + ' \u00B7 ' + (S.integ ? (integLabel(id) || 'no integration (helper or YAML)') : 'integration not available to this login');
+    });
+  }
   function openCard(id) {
     var s = S.states[id], c = card(id), d = dom(id);
     S.editId = id;
-    $('c_title').textContent = nameOf(s);
+    $('c_title').textContent = nameOf(s); showSrc(id);
     $('c_name').value = c.name || ''; $('c_icon').value = c.icon || '';
     $('c_wide').value = c.size === 'big' ? '2' : (c.size === 'wide' || c.wide || (d === 'camera' && !c.size)) ? '1' : '0'; $('c_modes').value = c.modes || 'drop';
     $('c_vis').value = isHidden(id) ? '1' : '0';
@@ -1471,7 +1540,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   }
 
   /* ---------- media players (Google TV, Google Home / Nest speakers, any cast device) ---------- */
-  var MP = { pause: 1, vol: 4, prev: 16, next: 32, on: 128, off: 256, stop: 4096, play: 16384 };   // HA supported_features bits
+  var MP = { pause: 1, vol: 4, prev: 16, next: 32, on: 128, off: 256, stop: 4096, play: 16384, browse: 131072, enq: 2097152 };   // HA supported_features bits
   function nowPlaying(s) {
     var a = s.attributes || {}, parts = [];
     if (s.state === 'off' || s.state === 'standby' || s.state === 'unavailable') { return ''; }
@@ -1497,7 +1566,9 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       return b;
     }
     var active = st === 'playing' || st === 'paused' || st === 'buffering';
-    if (st === 'off' || st === 'standby') { if (has(MP.on)) { out.push(wide('Turn on', 'turn_on')); } return out; }
+    var canB = f !== undefined && f !== null && (f & MP.browse) !== 0;
+    function browseBtn() { var b = el('button', 'mpbtn', 'Browse media'); b.addEventListener('click', function (e) { e.stopPropagation(); mbOpen(s.entity_id); }); return b; }
+    if (st === 'off' || st === 'standby') { if (has(MP.on)) { out.push(wide('Turn on', 'turn_on')); } if (canB) { out.push(browseBtn()); } return out; }
     if (active) {
       var row = el('div', 'stepper');
       if (has(MP.prev)) { row.appendChild(mpBtn('skip-previous', '\u23EE', 'Previous', function () { svc('media_previous_track'); })); }
@@ -1516,8 +1587,148 @@ html.light .gbox{background:rgba(0,0,0,.03)}
       r.addEventListener('change', function () { S.drag = false; svc('volume_set', { volume_level: parseInt(r.value, 10) / 100 }); });
       out.push(el('div', 'ml', 'Volume')); out.push(r);
     }
+    if (canB) { out.push(browseBtn()); }
     if ((active || a.app_name) && has(MP.off)) { out.push(wide(a.app_name !== undefined ? 'Stop casting' : 'Turn off', 'turn_off')); }
     return out;
+  }
+
+  /* ---------- media browser: browse a player's library (Music Assistant, Cast, ...) and play from it ----------
+     Uses the media_player.browse_media action (a normal service call with a response), so no extra WebSocket is needed.
+     Lists are shown 40 at a time, picture loading is limited to 3 at once, and every level already visited is kept so Back is instant. */
+  var MB_PAGE = 40, MB_ICON = { directory: ['folder', '\uD83D\uDCC1'], artist: ['account-music', '\uD83C\uDFA4'], album: ['album', '\uD83D\uDCBF'], track: ['music-note', '\uD83C\uDFB5'],
+    music: ['music-note', '\uD83C\uDFB5'], playlist: ['playlist-music', '\uD83C\uDFB6'], podcast: ['podcast', '\uD83C\uDF99'], channel: ['radio', '\uD83D\uDCFB'], app: ['apps', '\u25A6'], genre: ['music-box-multiple', '\uD83C\uDFB6'] };
+  function mbCur() { var M = S.mb; return M && M.stack[M.stack.length - 1]; }
+  function mbMsg(m) { $('mb_m').textContent = m || ''; clearTimeout(S.mbMT); if (m) { S.mbMT = setTimeout(function () { $('mb_m').textContent = ''; }, 6000); } }
+  function mbOpen(id) {
+    var st = S.states[id]; if (!st) { return; }
+    S.mb = { id: id, stack: [{ t: nameOf(st), cid: null, ctype: null, kids: null }], f: '', shown: MB_PAGE, other: false, rg: 0, gen: 0, tq: [], tb: 0, blobs: [], list: [], drawn: 0, moreEl: null };
+    $('mb_f').value = ''; $('mb_l').innerHTML = ''; $('mb_m').textContent = ''; $('mb').style.display = 'block';
+    $('mb_t').textContent = nameOf(st); $('mb_back').style.display = 'none'; $('mb_f').style.display = 'none';
+    mbLoad(S.mb.stack[0]);
+  }
+  function mbClose() { mbFree(); clearTimeout(S.mbMT); S.mb = null; $('mb').style.display = 'none'; $('mb_l').innerHTML = ''; }
+  function mbFree() { var M = S.mb; if (!M) { return; } M.tq = []; M.blobs.forEach(function (u) { URL.revokeObjectURL(u); }); M.blobs = []; M.rg++; }
+  function mbLoad(node) {
+    var M = S.mb, data = { entity_id: M.id }, gen = ++M.gen;
+    M.gen = gen;
+    if (node.cid !== null && node.cid !== undefined) { data.media_content_id = node.cid; data.media_content_type = node.ctype; }
+    mbMsg(''); $('mb_m').textContent = 'Loading\u2026';
+    api('POST', '/api/services/media_player/browse_media?return_response', data).then(function (r) {
+      if (!S.mb || S.mb.gen !== gen) { return; }
+      var sr = r && r.service_response, res = sr && sr[M.id];
+      if (!res) { throw new Error('no answer from this player'); }
+      node.kids = res.children || [];
+      if (res.title && !node.t) { node.t = res.title; }
+      $('mb_m').textContent = '';
+      M.shown = MB_PAGE; M.f = ''; $('mb_f').value = ''; M.other = false;
+      mbRender(true);
+    }).catch(function (e) {
+      if (!S.mb || S.mb.gen !== gen) { return; }
+      $('mb_m').textContent = '';
+      if (M.stack.length > 1 && !node.kids) { M.stack.pop(); }
+      mbMsg('Could not open that (' + e.message + ')');
+      if (M.stack.length && mbCur().kids) { mbRender(false); }
+    });
+  }
+  function mbGo(it) {
+    var M = S.mb, node = { t: it.title || '', cid: it.media_content_id, ctype: it.media_content_type, kids: null };
+    M.stack.push(node); mbLoad(node);
+  }
+  function mbBack() { var M = S.mb; if (!M || M.stack.length < 2) { return; } M.stack.pop(); M.gen++; M.shown = MB_PAGE; M.f = ''; $('mb_f').value = ''; M.other = false; $('mb_m').textContent = ''; mbRender(true); }
+  function mbThumb(box, it) {
+    var M = S.mb, mi = MB_ICON[it.media_class] || MB_ICON.directory, mdi = S.layout.iconset === 'mdi' && S.mdiOk !== false;
+    if (mdi) { box.appendChild(el('i', 'mdi mdi-' + mi[0])); } else { box.textContent = mi[1]; }
+    if (it.thumbnail) { M.tq.push({ box: box, url: it.thumbnail, rg: M.rg }); }
+  }
+  function mbPump() {
+    var M = S.mb, j;
+    while (M && M.tb < 3 && M.tq.length) {
+      j = M.tq.shift();
+      if (j.rg !== M.rg) { continue; }
+      M.tb++;
+      (function (j) {
+        function done() { if (S.mb) { S.mb.tb--; mbPump(); } }
+        function put(src) { var im = document.createElement('img'); im.onload = function () { if (S.mb && S.mb.rg === j.rg) { j.box.innerHTML = ''; j.box.appendChild(im); } done(); }; im.onerror = done; im.src = src; }
+        if (j.url.charAt(0) === '/') {
+          fetch((S.url || '') + j.url, { headers: { 'Authorization': 'Bearer ' + S.token } })
+            .then(function (r) { if (!r.ok) { throw new Error('http'); } return r.blob(); })
+            .then(function (b) { var u = URL.createObjectURL(b); if (S.mb && S.mb.rg === j.rg) { S.mb.blobs.push(u); put(u); } else { URL.revokeObjectURL(u); done(); } })
+            .catch(done);
+        } else { put(j.url); }
+      }(j));
+    }
+  }
+  function mbRow(it) {
+    var M = S.mb, w = el('div', 'mbi'), r = el('div', 'mbr'), th = el('div', 'mbt'), q = null, f = S.states[M.id] && S.states[M.id].attributes.supported_features;
+    mbThumb(th, it);
+    r.appendChild(th); r.appendChild(el('div', 'mbn', it.title || '(no name)'));
+    if (it.can_play) {
+      var pb = el('button', 'mbp go', 'Play');
+      pb.addEventListener('click', function (e) { e.stopPropagation(); mbPlay(it, 'play'); });
+      r.appendChild(pb);
+      if (f && (f & MP.enq)) {
+        var mo = el('button', 'mbp', '\u2026');
+        mo.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (!q) {
+            q = el('div', 'mbq');
+            [['Play next', 'next'], ['Add to queue', 'add']].forEach(function (x) { var b = el('button', 'mbp', x[0]); b.addEventListener('click', function () { mbPlay(it, x[1]); }); q.appendChild(b); });
+            w.appendChild(q);
+          } else { q.style.display = q.style.display === 'none' ? 'block' : 'none'; }
+        });
+        r.appendChild(mo);
+      }
+    }
+    r.addEventListener('click', function () { if (it.can_expand) { mbGo(it); } else if (it.can_play) { mbPlay(it, 'play'); } });
+    w.appendChild(r);
+    return w;
+  }
+  function mbPlay(it, mode) {
+    var M = S.mb, d = { entity_id: M.id, media_content_id: it.media_content_id, media_content_type: it.media_content_type }, nm = it.title || 'that';
+    if (mode === 'next' || mode === 'add') { d.enqueue = mode; }
+    mbMsg('Sending\u2026');
+    api('POST', '/api/services/media_player/play_media', d).then(function () {
+      setTimeout(poll, 800); setTimeout(poll, 2500);
+      if (!S.mb) { return; }
+      mbMsg(mode === 'next' ? nm + ' will play next' : (mode === 'add' ? nm + ' added to the queue' : 'Playing ' + nm));
+      if (mode === 'play') { setTimeout(function () { if (S.mb && S.mb.id === d.entity_id) { mbClose(); } }, 900); }
+    }).catch(function (e) { mbMsg('That didn\u2019t work (' + e.message + ')'); });
+  }
+  // a full redraw keeps the scroll position when asked to; 'Show more' only appends rows, so the page never jumps
+  function mbRender(full) {
+    var M = S.mb, node = mbCur(), kids = node.kids || [], l = $('mb_l'), f = M.f.toLowerCase(), list = [], others = [], keep = $('mb').scrollTop, top = M.stack.length === 1;
+    kids.forEach(function (k) {
+      if (f && (k.title || '').toLowerCase().indexOf(f) < 0) { return; }
+      if (top && k.media_class === 'app') { others.push(k); } else { list.push(k); }
+    });
+    mbFree(); M.rg++;
+    $('mb_t').textContent = node.t; $('mb_back').style.display = M.stack.length > 1 ? 'inline-block' : 'none';
+    $('mb_f').style.display = kids.length > 12 ? 'block' : 'none';
+    l.innerHTML = '';
+    if (!list.length && !others.length) { l.appendChild(el('div', 'mbo', kids.length ? 'Nothing matches that.' : 'Nothing here.')); }
+    M.list = list; M.drawn = 0; M.moreEl = null; mbMore();
+    if (others.length) {
+      var t = el('div', 'mbo', (M.other ? '\u25BE ' : '\u25B8 ') + 'Other sources (' + others.length + ')');
+      t.addEventListener('click', function () { M.other = !M.other; mbRender(false); });
+      l.appendChild(t);
+      if (M.other) { others.forEach(function (k) { l.appendChild(mbRow(k)); }); }
+    }
+    mbPump();
+    if (!full) { $('mb').scrollTop = keep; } else { $('mb').scrollTop = 0; }
+  }
+  function mbMore() {
+    var M = S.mb, l = $('mb_l'), to = Math.min(M.list.length, M.drawn + MB_PAGE), i, anchor = M.moreEl;
+    if (anchor && anchor.parentNode) { anchor.parentNode.removeChild(anchor); }
+    var ref = l.querySelector('.mbo'), frag = document.createDocumentFragment();
+    for (i = M.drawn; i < to; i++) { frag.appendChild(mbRow(M.list[i])); }
+    M.drawn = to;
+    if (ref && ref.parentNode === l && M.list.length) { l.insertBefore(frag, ref); } else { l.appendChild(frag); }
+    if (M.drawn < M.list.length) {
+      var m = el('div', 'mbmore', 'Show more (' + (M.list.length - M.drawn) + ' left)');
+      m.addEventListener('click', function () { mbMore(); mbPump(); });
+      M.moreEl = m;
+      if (ref && ref.parentNode === l) { l.insertBefore(m, ref); } else { l.appendChild(m); }
+    } else { M.moreEl = null; }
   }
 
   /* ---------- groups shown as one tile that opens a pop-up with the full cards ---------- */
@@ -2364,6 +2575,12 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   wireDrag();
   wireHold();
   $('det_close').addEventListener('click', closeDet);
+  $('mb_close').addEventListener('click', mbClose);
+  $('mb_back').addEventListener('click', mbBack);
+  $('mb_f').addEventListener('input', function () {
+    clearTimeout(S.mbFT);
+    S.mbFT = setTimeout(function () { if (S.mb) { S.mb.f = $('mb_f').value.replace(/^\s+|\s+$/g, ''); S.mb.other = S.mb.f ? true : S.mb.other; mbRender(true); } }, 250);
+  });
   $('grp_close').addEventListener('click', closeGrp);
   $('g_mode').addEventListener('change', groupEdToggle);
   $('g_save').addEventListener('click', saveGroupEd);
