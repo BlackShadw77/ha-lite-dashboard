@@ -110,6 +110,15 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 .ev .tt{-webkit-box-flex:1;-webkit-flex:1;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ev.past{opacity:.5}
 .ev.none,.ev.more{color:var(--muted);font-size:14px}
+#cal.cm-side #cal_body{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-align:start;-webkit-align-items:flex-start;align-items:flex-start}
+#cal.cm-side #cal_today{-webkit-box-flex:1;-webkit-flex:1 1 0;flex:1 1 0;min-width:0;margin-right:12px}
+#cal.cm-side #cal_week{width:46%;-webkit-flex-shrink:0;flex-shrink:0;grid-template-columns:repeat(3,minmax(0,1fr));grid-gap:6px;margin-top:0}
+#cal.cm-side .ev{padding:5px 0}
+#cal.cm-side .wd{padding:5px 2px 4px}
+#cal.cm-side .wd .d2{font-size:17px}
+#cal.cm-today #cal_week{display:none}
+#cal.cm-today .ev{padding:6px 0}
+@media (max-width:640px){#cal.cm-side #cal_body{display:block}#cal.cm-side #cal_today{margin-right:0}#cal.cm-side #cal_week{width:auto;grid-template-columns:repeat(6,minmax(0,1fr));margin-top:8px}}
 #cal_week{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-gap:8px;margin-top:10px}
 .wd{background:var(--panel2);border-radius:10px;padding:8px 2px 6px;text-align:center}
 .wd .d1{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center;-webkit-box-align:center;-webkit-align-items:center;align-items:center;height:15px;line-height:15px;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden}
@@ -180,8 +189,8 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 .gbox.astile{border-style:dashed}
 .tile.gtile{cursor:pointer}
 .tile.mix{box-shadow:inset 0 0 0 2px var(--on)}
-.segs{margin-top:8px;line-height:0;white-space:nowrap}
-.segs span{display:inline-block;width:14px;height:5px;border-radius:3px;margin:0 2px;background:rgba(255,255,255,.2)}
+.segs{margin:8px 0 -4px;line-height:0}
+.segs span{display:inline-block;width:14px;height:5px;border-radius:3px;margin:0 2px 4px;background:rgba(255,255,255,.2)}
 .segs span.a{background:var(--on)}
 .segs .bar{width:56px;overflow:hidden}
 .segs .bar i{display:block;height:5px;background:var(--on)}
@@ -202,8 +211,8 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 .sin>*{-webkit-box-flex:1;-webkit-flex:1 1 auto;flex:1 1 auto;min-width:0}
 .sin>*+*{margin-top:10px}
 #live_act{margin-top:6px}
-#live_act .arow{margin:12px 0 4px}
-#live_act .arow.one{display:inline-block;margin:10px 0 0;vertical-align:top}
+#live_act .arow{display:inline-block;vertical-align:top;max-width:100%;margin:10px 18px 0 0}
+#live_act .arow.one{margin-right:0}
 #live_act .al{font-size:12px;color:var(--muted);margin-bottom:5px}
 #live_act .abtn{margin:0 8px 8px 0}
 #live_act .abtn.on,#live_act .abtn.cur{background:var(--on);color:var(--ink);font-weight:600}
@@ -225,8 +234,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 </header>
 <div id="cal">
   <div class="ch"><b id="cal_t">Today</b><span id="cal_wx" class="wxh"></span><button class="btn" id="cal_choose" style="display:none">Calendars</button><button class="btn" id="cal_month">Month</button></div>
-  <div id="cal_today"></div>
-  <div id="cal_week"></div>
+  <div id="cal_body"><div id="cal_today"></div><div id="cal_week"></div></div>
 </div>
 <div id="tabs"></div>
 <div id="editbar">
@@ -259,6 +267,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     <div class="lay">
       <label>Calendar<select id="l_cal"><option value="1">Show</option><option value="0">Hide</option></select></label>
       <label>Week starts<select id="l_wk"><option value="1">Monday</option><option value="0">Sunday</option></select></label>
+      <label>Layout<select id="l_calmode"><option value="full">Full</option><option value="side">Compact: today beside the week</option><option value="today">Today only</option></select></label>
       <label>Weather<select id="l_wx"><option value="auto">Automatic</option><option value="off">Off</option></select></label>
     </div>
   </details>
@@ -267,6 +276,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     <div class="lay">
       <label>Picture refresh<select id="l_camrate"><option value="2">2 seconds</option><option value="5">5 seconds</option><option value="10">10 seconds</option><option value="30">30 seconds</option><option value="0">Off</option></select></label>
       <label>Auto-open live view<select id="l_camauto"><option value="1">On</option><option value="0">Off</option></select></label>
+      <label>Live view opens as<select id="l_camdef"><option value="video">Video (WebRTC, Sound button)</option><option value="stream">Stream (no sound)</option></select></label>
       <label>Auto-close after<select id="l_camhold"><option value="20">20 seconds</option><option value="45">45 seconds</option><option value="90">90 seconds</option><option value="0">Stay open</option></select></label>
     </div>
   </details>
@@ -413,7 +423,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   <div id="det_b"></div>
 </div></div>
 <div id="live" class="modal"><div class="box wide live">
-  <div class="ch"><b id="live_t"></b><button class="btn" id="live_mode">Use video</button><button class="btn" id="live_snd" style="display:none">Sound on</button><button class="btn go" id="live_close">Close</button></div>
+  <div class="ch"><b id="live_t"></b><button class="btn" id="live_mode">Use video</button><button class="btn" id="live_jump" style="display:none">Jump to live</button><button class="btn" id="live_snd" style="display:none">Sound on</button><button class="btn go" id="live_close">Close</button></div>
   <div class="cam" id="live_v"></div>
   <p class="evl" id="live_s"></p>
   <div id="live_act"></div>
@@ -424,7 +434,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 (function () {
   'use strict';
   // Bump this whenever the file is edited. Open copies of the page compare it with the server's copy and offer to update.
-  var BUILD = '2026-11-04b';
+  var BUILD = '2026-11-04d';
   var POLL_MS = 5000;
   // ---- Defaults for every device. Edit these, or use the Edit button on the page for per-device changes. ----
   var CONFIG = {
@@ -850,7 +860,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   /* ---------- layout, modes, card editor ---------- */
   var SIZES = { s: 118, m: 150, l: 200 }, TEXT = { s: 14, m: 16, l: 19 };
   var ACC = { amber: ['#f2b134', '#241a05'], teal: ['#3cc7b0', '#04231e'], blue: ['#5aa9f2', '#04182b'], rose: ['#f0708f', '#2b0613'], green: ['#8bd05a', '#102105'] };
-  function defLayout() { return { size: 'm', text: 'm', theme: 'dark', accent: 'amber', clock: true, icons: true, iconset: 'mdi', allsens: true, cal: true, wk: 1, camrate: 5, camauto: true, camhold: 45, dim: false, dimfrom: '22:00', dimto: '06:30', dimlvl: 85, dimwake: 30, dimEnt: '', wakeEnt: '', style: 'std', glname: 'show', wx: 'auto' }; }
+  function defLayout() { return { size: 'm', text: 'm', theme: 'dark', accent: 'amber', clock: true, icons: true, iconset: 'mdi', allsens: true, cal: true, wk: 1, camrate: 5, camauto: true, camhold: 45, camdef: 'video', calmode: 'full', dim: false, dimfrom: '22:00', dimto: '06:30', dimlvl: 85, dimwake: 30, dimEnt: '', wakeEnt: '', style: 'std', glname: 'show', wx: 'auto' }; }
   function card(id) { return S.cards[id] || {}; }
   function loadJ(k, def) { try { return JSON.parse(store(k)) || def; } catch (e) { return def; } }
   function saveAll() { store('ha_layout', JSON.stringify(S.layout)); store('ha_cards', JSON.stringify(S.cards)); store('ha_order', JSON.stringify(S.order)); store('ha_groups', JSON.stringify(S.groups)); store('ha_gcfg', JSON.stringify(S.gcfg)); store('ha_stacks', JSON.stringify(S.stacks)); store('ha_scfg', JSON.stringify(S.scfg)); store('ha_hidden', JSON.stringify(S.local)); }
@@ -865,7 +875,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     $('time').parentNode.style.visibility = L.clock ? 'visible' : 'hidden';
     $('l_size').value = L.size; $('l_text').value = L.text; $('l_theme').value = L.theme; $('l_accent').value = L.accent;
     $('l_clock').value = L.clock ? '1' : '0'; $('l_icons').value = L.icons ? '1' : '0'; $('l_iconset').value = L.iconset; $('l_allsens').value = L.allsens ? '1' : '0'; $('l_cal').value = L.cal ? '1' : '0'; $('l_wk').value = String(L.wk); $('l_wx').value = L.wx || 'auto';
-    $('l_camrate').value = String(L.camrate); $('l_camauto').value = L.camauto ? '1' : '0'; $('l_camhold').value = String(L.camhold);
+    $('l_camrate').value = String(L.camrate); $('l_camauto').value = L.camauto ? '1' : '0'; $('l_camhold').value = String(L.camhold); $('l_camdef').value = L.camdef || 'video'; $('l_calmode').value = L.calmode || 'full';
     $('l_dim').value = L.dim ? '1' : '0'; $('l_dimlvl').value = String(L.dimlvl); $('l_dimwake').value = String(L.dimwake);
     $('l_dimfrom').value = L.dimfrom || ''; $('l_dimto').value = L.dimto || ''; $('l_dimEnt').value = L.dimEnt || ''; $('l_wakeEnt').value = L.wakeEnt || ''; $('l_style').value = L.style || 'std'; $('l_glname').value = L.glname || 'show';
     dimCheck();
@@ -1071,7 +1081,9 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     }
   }
 
-  /* live view: video first (HLS), then the MJPEG stream, then fast snapshots */
+  /* live view: stream (no sound) or video. Video is WebRTC first (low delay, sound), then HLS, with the stream and snapshots as fallbacks */
+  var SEQ_STREAM = ['mjpeg', 'rtc', 'hls', 'snap'], SEQ_VIDEO = ['rtc', 'hls', 'mjpeg', 'snap'];
+  function liveNext(L) { var i; for (i = 0; i < L.seq.length; i++) { if (!L.tried[L.seq[i]]) { return L.seq[i]; } } return 'snap'; }
   function getHls(id, cb) {
     var ws, done = false, to;
     function fin(err, url) { if (done) { return; } done = true; clearTimeout(to); try { ws.close(); } catch (e) {} cb(err, url); }
@@ -1087,51 +1099,153 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     ws.onerror = function () { fin('connection failed'); };
     ws.onclose = function () { fin('connection closed'); };
   }
+  /* WebRTC through Home Assistant: camera/webrtc/offer is a subscription whose events are session, answer, candidate and error.
+     Our own candidates go back with camera/webrtc/candidate once the session id is known. Closing the socket ends the session. */
+  function rtcStart(id, v, L, fail) {
+    var PC = window.RTCPeerConnection || window.webkitRTCPeerConnection, ws, pc, sess = '', queue = [], pend = [], haveAns = false, over = false, mid = 10, ms = null, tr = false;
+    function bad(why) { if (over) { return; } over = true; fail(why); }
+    if (!PC) { bad('this browser has no WebRTC'); return; }
+    try { pc = new PC({ iceServers: [] }); } catch (e) { bad('WebRTC could not start'); return; }
+    L.pc = pc;
+    try { ws = new WebSocket(wsUrl()); } catch (e2) { bad('no websocket'); return; }
+    L.ws = ws;
+    function send(o) { try { ws.send(JSON.stringify(o)); } catch (e) {} }
+    function sendCand(c) { send({ id: mid++, type: 'camera/webrtc/candidate', entity_id: id, session_id: sess, candidate: c }); }
+    function addCand(c) { try { pc.addIceCandidate(new RTCIceCandidate(c)).catch(function () {}); } catch (e) {} }
+    function attach(st) { if (v.srcObject !== st) { v.srcObject = st; } var pr = v.play(); if (pr && pr.catch) { pr.catch(function () {}); } }
+    pc.ontrack = function (ev) {
+      var st = ev.streams && ev.streams[0];
+      if (!st) { if (!ms) { ms = new MediaStream(); } ms.addTrack(ev.track); st = ms; }
+      attach(st);
+    };
+    if (!('ontrack' in pc)) { pc.onaddstream = function (ev) { attach(ev.stream); }; }
+    pc.onicecandidate = function (ev) {
+      var c = ev.candidate; if (!c || !c.candidate) { return; }
+      c = { candidate: c.candidate, sdpMid: c.sdpMid, sdpMLineIndex: c.sdpMLineIndex };
+      if (sess) { sendCand(c); } else { queue.push(c); }
+    };
+    pc.oniceconnectionstatechange = function () {
+      var st = pc.iceConnectionState;
+      if (st === 'failed') { bad('connection failed'); } else if (st === 'disconnected' && L.playing) { liveStatus('Connection interrupted\u2026'); }
+    };
+    function makeOffer() {
+      try { pc.addTransceiver('video', { direction: 'recvonly' }); pc.addTransceiver('audio', { direction: 'recvonly' }); tr = true; } catch (e) {}
+      try { pc.createDataChannel('dataSendChannel'); } catch (e3) {}
+      pc.createOffer(tr ? {} : { offerToReceiveVideo: true, offerToReceiveAudio: true })
+        .then(function (o) { return pc.setLocalDescription(o); })
+        .then(function () { send({ id: 2, type: 'camera/webrtc/offer', entity_id: id, offer: pc.localDescription.sdp }); })
+        .catch(function () { bad('could not make an offer'); });
+    }
+    function setAnswer(sdp) {
+      var d = { type: 'answer', sdp: sdp };
+      try { d = new RTCSessionDescription(d); } catch (e) {}
+      pc.setRemoteDescription(d).then(function () { haveAns = true; pend.forEach(addCand); pend = []; }).catch(function () { bad('answer rejected'); });
+    }
+    ws.onmessage = function (ev) {
+      var m, e; try { m = JSON.parse(ev.data); } catch (x) { return; }
+      if (m.type === 'auth_required') { send({ type: 'auth', access_token: S.token }); }
+      else if (m.type === 'auth_ok') { makeOffer(); }
+      else if (m.type === 'auth_invalid') { bad('login refused'); }
+      else if (m.type === 'result' && m.id === 2) { if (!m.success) { bad((m.error && m.error.message) || 'not supported by this camera'); } }
+      else if (m.type === 'event' && m.id === 2 && m.event) {
+        e = m.event;
+        if (e.type === 'session') { sess = e.session_id; queue.forEach(sendCand); queue = []; }
+        else if (e.type === 'answer') { setAnswer(e.answer); }
+        else if (e.type === 'candidate') { if (haveAns) { addCand(e.candidate); } else { pend.push(e.candidate); } }
+        else if (e.type === 'error') { bad(e.message || e.code || 'stream error'); }
+      }
+    };
+    ws.onerror = function () { bad('connection failed'); };
+    ws.onclose = function () { bad('connection closed'); };
+  }
   function liveStatus(msg) { var L = S.live; $('live_s').textContent = (L && L.note ? L.note : '') + msg; }
   function liveClear() {
     var L = S.live; if (!L) { return; }
     clearTimeout(L.tmo); clearTimeout(L.snap);
+    if (L.old) { L.old.src = BLANK; L.old = null; }
+    if (L.ws) { L.ws.onclose = null; L.ws.onerror = null; try { L.ws.close(); } catch (e0) {} L.ws = null; }
+    if (L.pc) { L.pc.onicecandidate = null; L.pc.ontrack = null; L.pc.oniceconnectionstatechange = null; try { L.pc.close(); } catch (e1) {} L.pc = null; }
     if (L.el) {
-      if (L.el.tagName === 'VIDEO') { try { L.el.pause(); } catch (e) {} L.el.removeAttribute('src'); try { L.el.load(); } catch (e2) {} }
+      if (L.el.tagName === 'VIDEO') { try { L.el.pause(); } catch (e) {} try { L.el.srcObject = null; } catch (e3) {} L.el.removeAttribute('src'); try { L.el.load(); } catch (e2) {} }
       else { if (L.el.src && L.el.src.indexOf('blob:') === 0) { URL.revokeObjectURL(L.el.src); } L.el.src = BLANK; }
     }
     $('live_v').innerHTML = ''; L.el = null;
   }
   function liveFail(why) {
     var L = S.live; if (!L) { return; }
-    if (L.mode === 'hls') { L.note = 'Video unavailable (' + why + '). '; startLive(L.tried.mjpeg ? 'snap' : 'mjpeg'); } else { startLive('snap'); }
+    if (L.mode === 'rtc') { L.note = 'WebRTC unavailable (' + why + '). '; }
+    else if (L.mode === 'hls') { L.note = 'Video unavailable (' + why + '). '; }
+    else { L.note = 'Stream unavailable' + (why ? ' (' + why + ')' : '') + '. '; }
+    startLive(liveNext(L));
   }
   function startLive(mode) {
     var L = S.live; if (!L) { return; }
-    liveClear();
+    var vid = mode === 'rtc' || mode === 'hls';
+    var keep = (vid && L.el && L.el.tagName === 'IMG') ? L.el : null;     // keep the picture on screen until video is playing
+    if (keep) { clearTimeout(L.tmo); clearTimeout(L.snap); if (L.old) { L.old.src = BLANK; } L.old = keep; L.el = null; } else { liveClear(); }
+    var wantSnd = !!L.wantSound; L.wantSound = false;
     L.mode = mode; L.gen = (L.gen || 0) + 1; L.tried = L.tried || {}; L.tried[mode] = true;
     var gen = L.gen, id = L.id, box = $('live_v');
     function alive() { return S.live && S.live.id === id && S.live.gen === gen; }
-    $('live_mode').textContent = mode === 'hls' ? 'Use stream' : 'Use video';
-    $('live_snd').style.display = 'none';
+    $('live_mode').textContent = vid ? 'Use stream' : 'Try video';
+    $('live_mode').style.display = mode === 'mjpeg' ? 'none' : 'inline-block';
+    $('live_snd').style.display = 'inline-block'; $('live_snd').textContent = 'Sound on';
+    $('live_jump').style.display = 'none';
     liveStatus('Connecting\u2026');
-    if (mode === 'hls') {
+    if (vid) {
       var v = document.createElement('video');
-      v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.muted = true; v.autoplay = true; v.controls = true;
-      $('live_snd').style.display = 'inline-block'; $('live_snd').textContent = 'Sound on';
-      v.addEventListener('volumechange', function () { $('live_snd').textContent = v.muted ? 'Sound on' : 'Sound off'; });
-      box.appendChild(v); L.el = v;
-      v.addEventListener('playing', function () { if (alive()) { clearTimeout(L.tmo); liveStatus('Live (video)'); } });
-      v.addEventListener('error', function () { if (alive()) { liveFail('video error'); } });
-      L.tmo = setTimeout(function () { if (alive()) { liveFail('timed out'); } }, 12000);
-      getHls(id, function (err, url) {
-        if (!alive()) { return; }
-        if (err) { liveFail(err); return; }
-        v.src = (S.url || '') + url;
-        var pr = v.play(); if (pr && pr.catch) { pr.catch(function () {}); }
+      v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.muted = !wantSnd; v.autoplay = true; v.controls = mode === 'hls';
+      if (keep) { v.style.opacity = '0'; }
+      $('live_snd').textContent = v.muted ? 'Sound on' : 'Sound off';
+      box.appendChild(v); L.el = v; L.playing = false; L.lt = -1;
+      if (wantSnd) { var up = v.play(); if (up && up.catch) { up.catch(function () {}); } }     // still inside the tap, so Safari lets sound start later
+      var rtcLine = function () {
+        var ms = v.srcObject, na = ms && ms.getAudioTracks && !ms.getAudioTracks().length;
+        liveStatus('Live (video, ' + (na ? 'this camera sends no sound' : 'sound ' + (v.muted ? 'off' : 'on')) + ')');
+      };
+      var lag = function () {
+        try { if (v.seekable && v.seekable.length) { liveStatus('Live (video), about ' + Math.max(0, Math.round(v.seekable.end(v.seekable.length - 1) - v.currentTime)) + ' s behind'); } } catch (e) {}
+      };
+      v.addEventListener('volumechange', function () {
+        $('live_snd').textContent = v.muted ? 'Sound on' : 'Sound off';
+        if (alive() && L.playing && mode === 'rtc') { rtcLine(); }
       });
+      v.addEventListener('playing', function () {
+        if (!alive()) { return; }
+        clearTimeout(L.tmo); L.playing = true; v.style.opacity = '';
+        if (L.old) { L.old.src = BLANK; if (L.old.parentNode) { L.old.parentNode.removeChild(L.old); } L.old = null; }
+        if (mode === 'hls') { $('live_jump').style.display = 'inline-block'; liveStatus('Live (video)'); lag(); } else { rtcLine(); }
+        if (wantSnd) {
+          setTimeout(function () {     // if Safari refused sound it pauses the picture: carry on muted and say so
+            if (alive() && v.paused) { v.muted = true; var pr = v.play(); if (pr && pr.catch) { pr.catch(function () {}); } L.note = 'Safari blocked sound, tap Sound again. '; rtcLine(); }
+          }, 700);
+        }
+      });
+      v.addEventListener('timeupdate', function () { if (mode !== 'hls') { return; } var n = Math.floor(v.currentTime / 3); if (alive() && L.playing && n !== L.lt) { L.lt = n; lag(); } });
+      v.addEventListener('waiting', function () { if (alive() && L.playing) { liveStatus('Buffering\u2026'); } });
+      v.addEventListener('error', function () { if (alive()) { liveFail('video error'); } });
+      if (mode === 'rtc') {
+        L.tmo = setTimeout(function () { if (alive()) { liveFail('timed out'); } }, 12000);
+        liveStatus('Starting WebRTC\u2026');
+        rtcStart(id, v, L, function (why) { if (alive()) { liveFail(why); } });
+      } else {
+        L.tmo = setTimeout(function () { if (alive()) { liveFail('timed out'); } }, 25000);
+        liveStatus('Asking Home Assistant for video\u2026');
+        getHls(id, function (err, url) {
+          if (!alive()) { return; }
+          if (err) { liveFail(err); return; }
+          liveStatus('Video starting (can take 5 to 20 seconds)\u2026');
+          v.src = (S.url || '') + url;
+          var pr = v.play(); if (pr && pr.catch) { pr.catch(function () {}); }
+        });
+      }
     } else if (mode === 'mjpeg') {
       var tok = (S.states[id] && S.states[id].attributes && S.states[id].attributes.access_token) || '';
-      if (!tok) { L.note = 'Stream unavailable (no access token). '; startLive(L.tried.hls ? 'snap' : 'hls'); return; }
+      if (!tok) { liveFail('no access token'); return; }
       var im = document.createElement('img');
-      im.onerror = function () { if (alive()) { L.note = 'Stream unavailable. '; startLive(L.tried.hls ? 'snap' : 'hls'); } };
+      im.onerror = function () { if (alive()) { liveFail(''); } };
       im.src = (S.url || '') + '/api/camera_proxy_stream/' + encodeURIComponent(id) + '?token=' + encodeURIComponent(tok);
-      box.appendChild(im); L.el = im; liveStatus('Live (stream, no sound. Use video for sound)');
+      box.appendChild(im); L.el = im; liveStatus('Live (stream, no sound)');
     } else {
       var sn = document.createElement('img');
       box.appendChild(sn); L.el = sn;
@@ -1148,11 +1262,11 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   function openLive(id, auto) {
     if (S.live) { if (S.live.id === id) { return; } closeLive(); }
     var st = S.states[id] || { entity_id: id, attributes: {} };
-    S.live = { id: id, mode: 'mjpeg', gen: 0, note: '', tried: {} };
+    S.live = { id: id, mode: '', gen: 0, note: '', tried: {}, seq: (S.layout.camdef === 'stream' ? SEQ_STREAM : SEQ_VIDEO).slice() };
     $('live_t').textContent = nameOf(st);
     $('live').style.display = 'block';
     if (auto) { S.dimWake = new Date().getTime() + S.layout.dimwake * 1000; }     // a doorbell wakes a dimmed screen
-    startLive('mjpeg');
+    startLive(S.live.seq[0]);
     renderLiveActs();
     if (auto && S.layout.camhold > 0) { S.live.to = setTimeout(closeLive, S.layout.camhold * 1000); }
   }
@@ -2053,6 +2167,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
 
   function renderCal() {
     var box = $('cal');
+    box.className = 'cm-' + (S.layout.calmode || 'full');
     if (!S.layout.cal || !S.cals.length) { box.style.display = 'none'; return; }
     box.style.display = 'block';
     var now = new Date(), today = sod(now), list = S.evMain || [], i;
@@ -2065,8 +2180,9 @@ html.light .gbox{background:rgba(0,0,0,.03)}
     var evs = dayEvents(list, today);
     if (S.evMain === null) { t.appendChild(el('div', 'ev none', 'Loading\u2026')); }
     else if (!evs.length) { t.appendChild(el('div', 'ev none', 'Nothing on today.')); }
-    evs.slice(0, 6).forEach(function (e) { t.appendChild(evRow(e, now)); });
-    if (evs.length > 6) { var more = el('div', 'ev more', '+' + (evs.length - 6) + ' more'); more.addEventListener('click', function () { openMonth(today); }); t.appendChild(more); }
+    var cap = S.layout.calmode === 'side' ? 4 : 6;
+    evs.slice(0, cap).forEach(function (e) { t.appendChild(evRow(e, now)); });
+    if (evs.length > cap) { var more = el('div', 'ev more', '+' + (evs.length - cap) + ' more'); more.addEventListener('click', function () { openMonth(today); }); t.appendChild(more); }
     var wk = $('cal_week'); wk.innerHTML = '';
     for (i = 1; i <= 6; i++) {
       (function (day) {
@@ -2242,17 +2358,29 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   $('a_save').addEventListener('click', saveActEd);
   $('a_cancel').addEventListener('click', function () { $('aed').style.display = 'none'; });
   $('live_snd').addEventListener('click', function () {
-    var v = S.live && S.live.el;
-    if (!v || v.tagName !== 'VIDEO') { return; }
-    v.muted = !v.muted;
-    if (!v.muted) { v.volume = 1; var pr = v.play(); if (pr && pr.catch) { pr.catch(function () {}); } }
-    $('live_snd').textContent = v.muted ? 'Sound on' : 'Sound off';
+    var L = S.live; if (!L) { return; }
+    var v = L.el;
+    if (v && v.tagName === 'VIDEO') {
+      v.muted = !v.muted;
+      if (!v.muted) { v.volume = 1; var pr = v.play(); if (pr && pr.catch) { pr.catch(function () {}); } }
+      $('live_snd').textContent = v.muted ? 'Sound on' : 'Sound off';
+    } else {     // from the stream or snapshots: switch to video and ask for sound in the same tap
+      L.wantSound = true; L.note = ''; L.tried = {}; L.seq = SEQ_VIDEO.slice(); startLive('rtc');
+    }
   });
   $('s_save').addEventListener('click', saveStackEd);
   $('s_cancel').addEventListener('click', closeStackEd);
   $('s_del').addEventListener('click', deleteStackEd);
   $('live_close').addEventListener('click', closeLive);
-  $('live_mode').addEventListener('click', function () { if (S.live) { S.live.note = ''; S.live.tried = {}; startLive(S.live.mode === 'hls' ? 'mjpeg' : 'hls'); } });
+  $('live_jump').addEventListener('click', function () {
+    var v = S.live && S.live.el;
+    try { if (v && v.tagName === 'VIDEO' && v.seekable && v.seekable.length) { v.currentTime = Math.max(0, v.seekable.end(v.seekable.length - 1) - 1); var pr = v.play(); if (pr && pr.catch) { pr.catch(function () {}); } } } catch (e) {}
+  });
+  $('live_mode').addEventListener('click', function () {
+    var L = S.live; if (!L) { return; }
+    var vid = L.mode === 'rtc' || L.mode === 'hls';
+    L.note = ''; L.tried = {}; L.seq = (vid ? SEQ_STREAM : SEQ_VIDEO).slice(); startLive(L.seq[0]);
+  });
   $('live').addEventListener('touchstart', liveTouched, false);
   $('live').addEventListener('mousedown', liveTouched, false);
   $('onlyshown').addEventListener('change', function () { S.onlyShown = this.checked; render(); });
@@ -2278,7 +2406,7 @@ html.light .gbox{background:rgba(0,0,0,.03)}
   var ly = loadJ('ha_layout', {}), lk;
   for (lk in ly) { if (ly.hasOwnProperty(lk)) { S.layout[lk] = ly[lk]; } }
   S.cards = loadJ('ha_cards', {}); S.order = loadJ('ha_order', {}); S.groups = loadJ('ha_groups', []); S.gcfg = loadJ('ha_gcfg', {}); S.stacks = loadJ('ha_stacks', []); S.scfg = loadJ('ha_scfg', {}); ensureGroups();
-  ['size', 'text', 'theme', 'accent', 'clock', 'icons', 'iconset', 'allsens', 'cal', 'wk', 'camrate', 'camauto', 'camhold', 'dim', 'dimfrom', 'dimto', 'dimlvl', 'dimwake', 'dimEnt', 'wakeEnt', 'style', 'glname', 'wx'].forEach(function (k) {
+  ['size', 'text', 'theme', 'accent', 'clock', 'icons', 'iconset', 'allsens', 'cal', 'wk', 'camrate', 'camauto', 'camhold', 'camdef', 'calmode', 'dim', 'dimfrom', 'dimto', 'dimlvl', 'dimwake', 'dimEnt', 'wakeEnt', 'style', 'glname', 'wx'].forEach(function (k) {
     $('l_' + k).addEventListener('change', function () {
       S.layout[k] = (k === 'clock' || k === 'icons' || k === 'allsens' || k === 'cal' || k === 'camauto' || k === 'dim') ? this.value === '1' : ((k === 'wk' || k === 'camrate' || k === 'camhold' || k === 'dimlvl' || k === 'dimwake') ? parseInt(this.value, 10) : this.value);
       saveAll(); applyLayout(); render();
